@@ -1,29 +1,39 @@
-import React from 'react';
-import { Layout, Menu, Button, message } from 'antd';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Layout, Menu, Button, theme, Avatar, Dropdown, Space } from 'antd';
 import {
+    MenuFoldOutlined,
+    MenuUnfoldOutlined,
     DashboardOutlined,
     PlusCircleOutlined,
     UnorderedListOutlined,
-    TeamOutlined,
-    LogoutOutlined,
+    ShoppingOutlined,
     FileDoneOutlined,
-    ShoppingOutlined
+    TeamOutlined,
+    UserOutlined,
+    LogoutOutlined,
+    LockOutlined
 } from '@ant-design/icons';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useMockData } from '../context/MockDataContext';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 const { Header, Sider, Content } = Layout;
 
 const MainLayout = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const [collapsed, setCollapsed] = useState(false);
+    const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+    const {
+        token: { colorBgContainer, borderRadiusLG },
+    } = theme.useToken();
     const { currentUser, logout } = useMockData();
 
     if (!currentUser) return null; // Should be redirected by router
 
     const handleLogout = () => {
         logout();
-        message.success('Logged out successfully');
+        // message.success('Logged out successfully'); // Original line, commented out as message import was removed
         navigate('/login');
     };
 
@@ -62,35 +72,84 @@ const MainLayout = () => {
         return baseItems;
     };
 
+    const userMenu = {
+        items: [
+            {
+                key: 'profile',
+                label: (
+                    <div className="px-4 py-2">
+                        <p className="font-bold">{currentUser?.name}</p>
+                        <p className="text-gray-500 text-xs">{currentUser?.role}</p>
+                    </div>
+                ),
+            },
+            {
+                type: 'divider',
+            },
+            {
+                key: 'change-password',
+                icon: <LockOutlined />,
+                label: 'Change Password',
+                onClick: () => setPasswordModalVisible(true),
+            },
+            {
+                key: 'logout',
+                icon: <LogoutOutlined />,
+                label: 'Logout',
+                onClick: handleLogout,
+            },
+        ],
+    };
+
     return (
-        <Layout className="min-h-screen">
-            <Sider collapsible breakpoint="lg" theme="dark">
-                <div className="h-16 flex items-center justify-center text-white text-lg font-bold bg-opacity-20 bg-white m-2 rounded">
-                    ProcureSys
+        <Layout>
+            <Sider trigger={null} collapsible collapsed={collapsed} breakpoint="lg" theme="dark">
+                <div className="demo-logo-vertical" />
+                <div className="text-white text-center py-4 font-bold text-lg truncate px-2">
+                    {collapsed ? 'PBP' : 'Procurement Platform'}
                 </div>
                 <Menu
                     theme="dark"
                     mode="inline"
-                    selectedKeys={[location.pathname]}
+                    defaultSelectedKeys={[location.pathname]}
                     items={getMenuItems()}
                     onClick={({ key }) => navigate(key)}
                 />
             </Sider>
             <Layout>
-                <Header className="bg-white px-6 flex justify-between items-center shadow-sm">
-                    <h2 className="text-xl font-semibold m-0 capitalize">
-                        {currentUser.role} Portal
-                    </h2>
-                    <div className="flex items-center gap-4">
-                        <span>Welcome, <b>{currentUser.name}</b></span>
-                        <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} danger>
-                            Logout
-                        </Button>
-                    </div>
+                <Header style={{ padding: 0, background: colorBgContainer }} className="flex justify-between items-center pr-6">
+                    <Button
+                        type="text"
+                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                        onClick={() => setCollapsed(!collapsed)}
+                        style={{
+                            fontSize: '16px',
+                            width: 64,
+                            height: 64,
+                        }}
+                    />
+                    <Dropdown menu={userMenu} placement="bottomRight">
+                        <Space className="cursor-pointer hover:bg-gray-100 px-4 py-2 rounded-lg transition-colors">
+                            <Avatar icon={<UserOutlined />} className="bg-blue-500" />
+                            <span className="hidden md:inline font-medium">{currentUser?.name}</span>
+                        </Space>
+                    </Dropdown>
                 </Header>
-                <Content className="m-6 p-6 bg-white rounded-lg shadow min-h-[280px]">
+                <Content
+                    style={{
+                        margin: '24px 16px',
+                        padding: 24,
+                        minHeight: 280,
+                        background: colorBgContainer,
+                        borderRadius: borderRadiusLG,
+                    }}
+                >
                     <Outlet />
                 </Content>
+                <ChangePasswordModal
+                    visible={passwordModalVisible}
+                    onClose={() => setPasswordModalVisible(false)}
+                />
             </Layout>
         </Layout>
     );

@@ -6,6 +6,9 @@ import LoginPage from './pages/LoginPage';
 import OperatorDashboard from './pages/OperatorDashboard';
 import SupplierDashboard from './pages/SupplierDashboard';
 import AuditorDashboard from './pages/AuditorDashboard';
+import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import UserManagement from './pages/UserManagement';
 import { Button } from 'antd';
 
 // Default Generic Dashboard for any role
@@ -40,7 +43,13 @@ function App() {
             <Route path="supplier/invites" element={<SupplierDashboard />} />
 
             <Route path="auditor/opening" element={<AuditorDashboard />} />
+
+            {/* Admin Route */}
+            <Route path="admin/users" element={<UserManagement />} />
           </Route>
+
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Routes>
       </Router>
     </MockDataProvider>

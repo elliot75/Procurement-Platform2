@@ -20,10 +20,15 @@ const LoginPage = () => {
             console.log(`Attempting login...`);
 
             // Use Mock Login from Context
-            const user = loginMock(email, password);
+            const result = loginMock(email, password);
 
-            if (user) {
-                message.success(`Welcome back, ${user.name}`);
+            if (result && result.error === 'Pending Approval') {
+                setError('Your account is pending Admin approval.');
+                return;
+            }
+
+            if (result) {
+                message.success(`Welcome back, ${result.name}`);
                 navigate('/dashboard');
             } else {
                 throw new Error('Invalid credentials');
@@ -67,9 +72,16 @@ const LoginPage = () => {
                     </Form.Item>
 
                     <Form.Item>
+                        <div className="flex justify-between items-center mb-4">
+                            <a href="/forgot-password" className="text-gray-500 hover:text-blue-600 text-sm">Forgot Password?</a>
+                        </div>
                         <Button type="primary" htmlType="submit" className="w-full bg-blue-600 hover:bg-blue-700">
                             Sign In
                         </Button>
+                        <div className="text-center mt-4">
+                            <span className="text-gray-500">Don't have an account? </span>
+                            <a href="/register" className="text-blue-600 hover:underline">Register</a>
+                        </div>
                     </Form.Item>
                 </Form>
             </Card>

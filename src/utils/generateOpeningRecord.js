@@ -1,6 +1,6 @@
 // src/utils/generateOpeningRecord.js
 import jsPDF from 'jspdf';
-import 'jspdf-autotable'; // Plugin for tables
+import autoTable from 'jspdf-autotable'; // Updated import
 
 /**
  * Generates the Opening Record PDF.
@@ -46,7 +46,7 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
         tableRows.push(bidData);
     });
 
-    doc.autoTable({
+    autoTable(doc, {
         startY: 80,
         head: [tableColumn],
         body: tableRows,
