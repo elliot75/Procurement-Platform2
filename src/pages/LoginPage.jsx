@@ -1,57 +1,37 @@
 // src/pages/LoginPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Card, Typography, Alert } from 'antd';
+import { Form, Input, Button, Card, Typography, Alert, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { useMockData } from '../context/MockDataContext';
 
 const { Title } = Typography;
 
 const LoginPage = () => {
     const [error, setError] = useState('');
     const navigate = useNavigate();
-
-    // ACCESSING ENV VARIABLE
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const { loginMock } = useMockData();
 
     const onFinish = async (values) => {
         setError('');
         const { email, password } = values;
 
         try {
-            console.log(`Attempting login to ${API_URL}/auth/login with`, email);
+            console.log(`Attempting login...`);
 
-            // MOCK LOGIN FOR DEMONSTRATION
-            if (email === 'admin' && password === 'Admin@123') {
-                // Success
-                localStorage.setItem('token', 'mock-jwt-token');
-                localStorage.setItem('user', JSON.stringify({ name: 'Administrator', role: 'Admin' }));
+            // Use Mock Login from Context
+            const user = loginMock(email, password);
+
+            if (user) {
+                message.success(`Welcome back, ${user.name}`);
                 navigate('/dashboard');
-                return;
+            } else {
+                throw new Error('Invalid credentials');
             }
-
-            // Real API Call (commented out for now if backend not running)
-            /*
-            const response = await fetch(`${API_URL}/auth/login`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, password }),
-            });
-      
-            if (!response.ok) {
-              throw new Error('Invalid credentials');
-            }
-      
-            const data = await response.json();
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            navigate('/dashboard');
-            */
-
-            throw new Error('Invalid credentials (Try: admin / Admin@123)');
 
         } catch (err) {
             console.error("Login failed:", err);
-            setError(err.message || "Login failed. Please check your credentials.");
+            setError("Login failed. Check your username.");
         }
     };
 

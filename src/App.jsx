@@ -1,33 +1,49 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { MockDataProvider } from './context/MockDataContext';
+import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
+import OperatorDashboard from './pages/OperatorDashboard';
+import SupplierDashboard from './pages/SupplierDashboard';
+import AuditorDashboard from './pages/AuditorDashboard';
 import { Button } from 'antd';
 
-const Dashboard = () => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const logout = () => {
-    localStorage.clear();
-    window.location.href = '/login';
-  };
-
+// Default Generic Dashboard for any role
+const GeneralDashboard = () => {
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
-      <p>Welcome, {user.name} ({user.role})</p>
-      <Button onClick={logout} danger className="mt-4">Logout</Button>
+    <div className="text-center p-10">
+      <h1 className="text-2xl font-bold text-gray-700">Welcome to the Dashboard</h1>
+      <p className="mt-4 text-gray-500">Please select an action from the sidebar menu.</p>
     </div>
   );
 };
 
+// Protected Route Wrapper could be added here, 
+// but MainLayout handles basic redirection if no user.
+
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </Router>
+    <MockDataProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+
+          {/* Protected Routes inside MainLayout */}
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<GeneralDashboard />} />
+
+            {/* Role Specific Routes */}
+            <Route path="operator/create" element={<OperatorDashboard />} />
+            <Route path="operator/list" element={<OperatorDashboard />} /> {/* Reusing same component for demo */}
+
+            <Route path="supplier/invites" element={<SupplierDashboard />} />
+
+            <Route path="auditor/opening" element={<AuditorDashboard />} />
+          </Route>
+        </Routes>
+      </Router>
+    </MockDataProvider>
   );
 }
 
