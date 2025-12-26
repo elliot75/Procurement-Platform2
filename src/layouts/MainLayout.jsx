@@ -102,7 +102,7 @@ const MainLayout = () => {
     };
 
     return (
-        <Layout>
+        <Layout style={{ minHeight: '100vh' }}>
             <Sider trigger={null} collapsible collapsed={collapsed} breakpoint="lg" theme="dark">
                 <div className="demo-logo-vertical" />
                 <div className="text-white text-center py-4 font-bold text-lg truncate px-2">
