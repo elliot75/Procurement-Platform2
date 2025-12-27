@@ -14,7 +14,7 @@ import {
     LogoutOutlined,
     LockOutlined
 } from '@ant-design/icons';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useMockData } from '../context/MockDataContext';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 
@@ -30,7 +30,7 @@ const MainLayout = () => {
     } = theme.useToken();
     const { currentUser, logout } = useMockData();
 
-    if (!currentUser) return null; // Should be redirected by router
+    if (!currentUser) return <Navigate to="/login" replace />;
 
     const handleLogout = () => {
         logout();
