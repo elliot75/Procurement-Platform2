@@ -155,7 +155,7 @@ router.get('/projects', async (req, res) => {
                 [p.id]
             );
             p.invitedSuppliers = invitesRes.rows.map(r => r.username);
-            p.createdby = p.created_by_name; // Map for frontend compatibility if needed
+            p.createdBy = p.created_by_name; // Map for frontend compatibility if needed
 
             // Get Bids
             const bidsRes = await query(

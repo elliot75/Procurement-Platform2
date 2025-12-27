@@ -17,7 +17,7 @@ const OperatorDashboard = () => {
     // Filter projects created by this operator
     const myProjects = projects.filter(p => currentUser.role === 'Admin' || p.createdBy === currentUser.username);
 
-    const handleCreate = (values) => {
+    const handleCreate = async (values) => {
         const newProject = {
             title: values.title,
             description: values.description,
@@ -27,10 +27,14 @@ const OperatorDashboard = () => {
             currency: values.currency,
             attachment: values.attachment ? values.attachment.file.name : null // Mock saving file name
         };
-        createProject(newProject);
-        message.success('Bidding Project Created Successfully!');
-        setIsModalOpen(false);
-        form.resetFields();
+        const success = await createProject(newProject);
+        if (success) {
+            message.success('Bidding Project Created Successfully!');
+            setIsModalOpen(false);
+            form.resetFields();
+        } else {
+            message.error('Failed to create project. Please try again.');
+        }
     };
 
     const handleAddSupplier = (values) => {

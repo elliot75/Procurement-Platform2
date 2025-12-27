@@ -20,14 +20,14 @@ const LoginPage = () => {
             console.log(`Attempting login...`);
 
             // Use Mock Login from Context
-            const result = loginMock(email, password);
+            const result = await loginMock(email, password);
 
             if (result && result.error === 'Pending Approval') {
                 setError('Your account is pending Admin approval.');
                 return;
             }
 
-            if (result) {
+            if (result && !result.error) {
                 message.success(`Welcome back, ${result.name}`);
                 navigate('/dashboard');
             } else {
