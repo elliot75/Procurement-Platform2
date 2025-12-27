@@ -86,16 +86,45 @@ export const MockDataProvider = ({ children }) => {
             ...project,
             id: Date.now(),
             status: 'Active',
+            bids: [],
             createdAt: new Date().toISOString(),
-            bids: []
+            currency: project.currency || 'TWD', // Default currency
+            attachment: project.attachment || null, // Mock attachment URL
         };
-        setProjects(prev => [newProject, ...prev]);
+        setProjects(prev => [...prev, newProject]);
     };
 
-    const placeBid = (projectId, bid) => {
+    const placeBid = (projectId, supplierName, amount) => {
         setProjects(prev => prev.map(p => {
             if (p.id === projectId) {
-                return { ...p, bids: [...p.bids, bid] };
+                const newBid = {
+                    supplier: supplierName,
+                    amount: Number(amount),
+                    timestamp: new Date().toISOString() // Store submission time
+                };
+                return { ...p, bids: [...p.bids, newBid] };
+            }
+            return p;
+        }));
+    };
+
+    // Operator: Add Supplier to active project
+    const autoAddSupplier = (projectId, supplierName) => {
+        setProjects(prev => prev.map(p => {
+            if (p.id === projectId) {
+                if (p.invitedSuppliers.includes(supplierName)) return p;
+                return { ...p, invitedSuppliers: [...p.invitedSuppliers, supplierName] };
+            }
+            return p;
+        }));
+    };
+
+    // Admin: Cancel project if no bids
+    const cancelProject = (projectId) => {
+        setProjects(prev => prev.map(p => {
+            if (p.id === projectId) {
+                if (p.bids.length > 0) return p; // Cannot cancel if bids exist
+                return { ...p, status: 'Cancelled' };
             }
             return p;
         }));
@@ -104,14 +133,14 @@ export const MockDataProvider = ({ children }) => {
     const closeProject = (projectId) => {
         setProjects(prev => prev.map(p => {
             if (p.id === projectId) return { ...p, status: 'Ended' };
-            return p
+            return p;
         }));
     };
 
     const openProject = (projectId, auditorName) => {
         setProjects(prev => prev.map(p => {
             if (p.id === projectId) return { ...p, status: 'Opened', openedBy: auditorName, openedAt: new Date().toISOString() };
-            return p
+            return p;
         }));
     };
 
@@ -223,6 +252,8 @@ export const MockDataProvider = ({ children }) => {
             register,
             deleteUser,
             updateUser,
+            autoAddSupplier,
+            cancelProject,
             requestPasswordReset,
             confirmPasswordReset,
             changePassword

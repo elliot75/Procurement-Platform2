@@ -6,6 +6,7 @@ import {
     DashboardOutlined,
     PlusCircleOutlined,
     UnorderedListOutlined,
+    OrderedListOutlined,
     ShoppingOutlined,
     FileDoneOutlined,
     TeamOutlined,
@@ -44,10 +45,15 @@ const MainLayout = () => {
         ];
 
         if (currentUser.role === 'Operator' || currentUser.role === 'Admin') {
-            baseItems.push(
-                { key: '/operator/create', icon: <PlusCircleOutlined />, label: 'Create Project' },
-                { key: '/operator/list', icon: <UnorderedListOutlined />, label: 'My Projects' }
-            );
+            baseItems.push({
+                key: 'project-management',
+                icon: <UnorderedListOutlined />,
+                label: 'Project Management',
+                children: [
+                    { key: '/operator/create', icon: <PlusCircleOutlined />, label: 'Create Project' },
+                    { key: '/operator/list', icon: <OrderedListOutlined />, label: 'My Projects' }
+                ]
+            });
         }
 
         if (currentUser.role === 'Supplier' || currentUser.role === 'Admin') {

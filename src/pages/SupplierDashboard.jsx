@@ -7,10 +7,11 @@ import useCountDown from '../hooks/useCountDown';
 const { Countdown } = Statistic;
 
 const ProjectCard = ({ project, onBid, currentUser }) => {
-    // Check if I already bid
-    const myBid = project.bids.find(b => b.supplierId === currentUser.username);
+    // Check if I already bid (get latest bid if any)
+    const myBids = project.bids.filter(b => b.supplier === currentUser.username || b.supplierId === currentUser.username);
+    const hasBid = myBids.length > 0;
+
     const { days, hours, minutes, seconds, isExpired } = useCountDown(project.endTime);
-    // Note: useCountDown returns simple numbers, but we can also use AntD Statistic.Countdown for visual flair if we pass timestamp
 
     return (
         <Card
@@ -20,14 +21,15 @@ const ProjectCard = ({ project, onBid, currentUser }) => {
             actions={[
                 <Button
                     type="primary"
-                    disabled={isExpired || myBid}
+                    disabled={isExpired} // Allow re-bid until expired
                     onClick={() => onBid(project)}
                 >
-                    {myBid ? 'Bid Submitted' : isExpired ? 'Expired' : 'Place Bid'}
+                    {hasBid ? 'Update Bid' : isExpired ? 'Expired' : 'Place Bid'}
                 </Button>
             ]}
         >
             <p className="text-gray-500 mb-4">{project.description}</p>
+            <div className="text-xs text-gray-400 mb-2">Currency: {project.currency || 'TWD'}</div>
 
             <Row gutter={16}>
                 <Col span={12}>
@@ -64,18 +66,15 @@ const SupplierDashboard = () => {
 
     // Filter projects where I am invited
     const myInvites = projects.filter(p =>
-        (currentUser.role === 'Admin' || p.invitedSuppliers.includes(currentUser.username)) &&
-        p.status !== 'Opened' // Hide opened ones from main list usually, or keep them for history
+        (currentUser.role === 'Admin' || (p.invitedSuppliers && p.invitedSuppliers.includes(currentUser.username))) &&
+        p.status !== 'Opened'
     );
 
     const handleSubmitBid = () => {
         if (bidAmount <= 0) return message.error('Enter a valid amount');
 
-        placeBid(selectedProject.id, {
-            supplierId: currentUser.username,
-            price: bidAmount,
-            submittedAt: new Date().toISOString()
-        });
+        // Call with correct signature: id, username, amount
+        placeBid(selectedProject.id, currentUser.username, bidAmount);
 
         message.success('Bid Submitted Successfully!');
         setSelectedProject(null);
@@ -98,15 +97,15 @@ const SupplierDashboard = () => {
                 open={!!selectedProject}
                 onCancel={() => setSelectedProject(null)}
                 onOk={handleSubmitBid}
-                okText="Submit Sealed Bid"
+                okText="Submit Bid"
             >
                 <div className="space-y-4">
-                    <p>Enter your best offer. Once submitted, it cannot be changed.</p>
+                    <p>You can update your bid price anytime before the deadline. History is recorded.</p>
                     <div>
-                        <label className="block mb-2">Bid Amount (USD)</label>
+                        <label className="block mb-2">Bid Amount ({selectedProject?.currency || 'TWD'})</label>
                         <InputNumber
                             className="w-full"
-                            prefix="$"
+                            prefix={selectedProject?.currency === 'USD' ? '$' : selectedProject?.currency === 'JPY' ? '¥' : 'NT$'}
                             min={1}
                             value={bidAmount}
                             onChange={setBidAmount}
