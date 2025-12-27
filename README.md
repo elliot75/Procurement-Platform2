@@ -40,6 +40,23 @@ npm run dev
 ```
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
+## 🗄️ Database Setup (PostgreSQL)
+
+1. **Configure Connection**:
+   Ensure your `.env` file has the correct `DATABASE_CONNECTION_STRING`.
+
+2. **Initialize Database**:
+   Run the setup script to create tables and the default admin user:
+   ```bash
+   npm run db:setup
+   ```
+   This will create the following tables: `users`, `projects`, `project_invites`, `bids`.
+   It also creates a default admin user.
+
+- **Default Admin Credentials**:
+  - Account: `upvn`
+  - Password: `pwd4upvn`
+
 - **Login Credentials (Mock)**: 
   - Username: `admin`
   - Password: `Admin@123`
