@@ -72,6 +72,20 @@ const OperatorDashboard = () => {
             render: (_, record) => record.bids.length
         },
         {
+            title: 'Invited Suppliers',
+            dataIndex: 'invitedSuppliers',
+            key: 'invitedSuppliers',
+            render: suppliers => (
+                <>
+                    {suppliers && suppliers.length > 0 ? (
+                        suppliers.map(s => <Tag key={s} color="purple">{s}</Tag>)
+                    ) : (
+                        <span className="text-gray-400">None</span>
+                    )}
+                </>
+            )
+        },
+        {
             title: 'Actions',
             key: 'actions',
             render: (_, record) => (

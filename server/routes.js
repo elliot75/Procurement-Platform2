@@ -201,8 +201,20 @@ router.post('/projects', async (req, res) => {
         );
 
         const newProject = result.rows[0];
-        // Handle invites? Ideally passed in body
-        // if (p.invitedSuppliers) ... 
+
+
+        // Handle invites if provided
+        if (p.invitedSuppliers && Array.isArray(p.invitedSuppliers) && p.invitedSuppliers.length > 0) {
+            for (const supplierUsername of p.invitedSuppliers) {
+                const supRes = await query('SELECT id FROM users WHERE username = $1', [supplierUsername]);
+                if (supRes.rows.length > 0) {
+                    await query(
+                        'INSERT INTO project_invites (project_id, supplier_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                        [newProject.id, supRes.rows[0].id]
+                    );
+                }
+            }
+        }
 
         res.json(newProject);
     } catch (err) {
