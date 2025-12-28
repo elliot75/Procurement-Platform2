@@ -63,6 +63,7 @@ const SupplierDashboard = () => {
     const { projects, placeBid, currentUser } = useMockData();
     const [selectedProject, setSelectedProject] = useState(null);
     const [bidAmount, setBidAmount] = useState(0);
+    const [fileList, setFileList] = useState([]);
 
     // Filter projects where I am invited
     const myInvites = projects.filter(p =>
@@ -73,12 +74,15 @@ const SupplierDashboard = () => {
     const handleSubmitBid = () => {
         if (bidAmount <= 0) return message.error('Enter a valid amount');
 
-        // Call with correct signature: id, username, amount
-        placeBid(selectedProject.id, currentUser.username, bidAmount);
+        const attachments = fileList.map(file => file.name);
+
+        // Call with correct signature: id, username, amount, attachments
+        placeBid(selectedProject.id, currentUser.username, bidAmount, attachments);
 
         message.success('Bid Submitted Successfully!');
         setSelectedProject(null);
         setBidAmount(0);
+        setFileList([]);
     };
 
     return (
@@ -113,7 +117,12 @@ const SupplierDashboard = () => {
                     </div>
                     <div>
                         <label className="block mb-2">Technical Proposal (PDF Only)</label>
-                        <Upload maxCount={1}>
+                        <Upload
+                            multiple
+                            fileList={fileList}
+                            beforeUpload={() => false} // Prevent auto upload
+                            onChange={({ fileList }) => setFileList(fileList)}
+                        >
                             <Button icon={<UploadOutlined />}>Click to Upload</Button>
                         </Upload>
                     </div>

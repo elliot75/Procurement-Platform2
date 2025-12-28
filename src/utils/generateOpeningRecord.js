@@ -44,17 +44,31 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
     doc.text(`Currency: ${project.currency || 'TWD'}`, 14, 78);
 
     // 3. Supplier Table
-    const tableColumn = ["ID", "Supplier Name", "Status", "Submission Time", "Bid Price", "Negotiated Price"];
+    const tableColumn = ["ID", "Supplier Name", "Status", "Submission Time", "Bid Price", "Attachments", "Negotiated Price"];
     const tableRows = [];
 
     suppliers.forEach(supplier => {
         const bidPrice = supplier.price ? `${project.currency || 'TWD'} ${supplier.price.toLocaleString()}` : "-";
+
+        // Format attachments listing
+        let attachmentStr = "-";
+        if (supplier.attachments && supplier.attachments.length > 0) {
+            attachmentStr = supplier.attachments.join(", ");
+        } else if (project.bids) {
+            // Fallback lookup if not passed in 'supplier' object
+            const bid = project.bids.find(b => b.supplierId === supplier.id || b.supplier === supplier.id);
+            if (bid && bid.attachments && bid.attachments.length > 0) {
+                attachmentStr = bid.attachments.join(", ");
+            }
+        }
+
         const bidData = [
             supplier.id,
             supplier.name,
             supplier.hasBid ? "Submitted" : "No Bid",
             formatDate(supplier.bidTime),
             bidPrice,
+            attachmentStr,
             "" // Empty column for Negotiated Price
         ];
         tableRows.push(bidData);
@@ -66,6 +80,9 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
         body: tableRows,
         theme: 'grid',
         headStyles: { fillColor: [41, 128, 185] }, // Blue header
+        columnStyles: {
+            5: { cellWidth: 40 } // Attachments column width
+        }
     });
 
     // 4. Signatures
@@ -77,9 +94,30 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
     doc.text("Witness Signature:", 120, finalY + 30);
     doc.line(155, finalY + 30, 200, finalY + 30);
 
-    // 5. Return blob url instead of save, or just save
-    // User wants persistent link. We can't really store the file in mock.
-    // The "Persistent Link" effectively just means re-generating the PDF with the same data.
-    // So distinct save is fine for user experience as "Download".
-    doc.save(`Opening_Record_${project.id}.pdf`);
+    // 5. Save with sanitized filename (Manual Blob method to ensure browser respects filename)
+    const safeTitle = (project.title || "Project").replace(/[^a-z0-9\u4e00-\u9fa5]/gi, '_');
+    const filename = `Opening_Record_${project.id}_${safeTitle}.pdf`;
+
+    console.log("Saving PDF manually as:", filename);
+
+    // Generate blob directly
+    const pdfBlob = doc.output('blob');
+
+    // Create object URL
+    const url = URL.createObjectURL(pdfBlob);
+
+    // Create temporary link element
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename; // This forces the filename
+
+    // Append to body (required for FF), click, and remove
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }, 100);
 };

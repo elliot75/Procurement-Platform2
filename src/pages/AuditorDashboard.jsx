@@ -14,9 +14,15 @@ const AuditorDashboard = () => {
         try {
             // 1. Generate PDF Data
             // Map suppliers to their LATEST bid
-            const suppliers = project.invitedSuppliers.map(sId => {
+            const invitees = project.invitedSuppliers || [];
+            const bidders = (project.bids || []).map(b => b.supplier || b.supplierId);
+
+            // Unique set of all involved suppliers (invited + actual bidders)
+            const allSupplierIds = [...new Set([...invitees, ...bidders])].filter(id => id); // filter truthy
+
+            const suppliers = allSupplierIds.map(sId => {
                 // Get all bids from this supplier
-                const supplierBids = project.bids.filter(b => b.supplier === sId || b.supplierId === sId);
+                const supplierBids = (project.bids || []).filter(b => b.supplier === sId || b.supplierId === sId);
                 // Sort by time desc
                 const latestBid = supplierBids.sort((a, b) => new Date(b.timestamp || b.submittedAt) - new Date(a.timestamp || a.submittedAt))[0];
 
@@ -25,10 +31,12 @@ const AuditorDashboard = () => {
                     name: `Company ${sId.toUpperCase()}`,
                     hasBid: !!latestBid,
                     bidTime: latestBid ? (latestBid.timestamp || latestBid.submittedAt) : null,
-                    price: latestBid ? (latestBid.amount || latestBid.price) : null
+                    price: latestBid ? (latestBid.amount || latestBid.price) : null,
+                    attachments: latestBid ? (latestBid.attachments || []) : []
                 };
             });
 
+            console.log("Generating PDF for:", project.title, "Suppliers:", suppliers.length);
             generateOpeningRecord(project, suppliers, currentUser);
 
             // 2. Update Status (only if not already opened, else just download)
@@ -39,8 +47,8 @@ const AuditorDashboard = () => {
                 message.success('Report Downloaded!');
             }
         } catch (error) {
-            console.error(error);
-            message.error('Failed to generate record');
+            console.error("PDF Generation Error:", error);
+            message.error(`Failed to generate record: ${error.message}`);
         }
     };
 
@@ -90,7 +98,22 @@ const AuditorDashboard = () => {
             { title: 'Supplier', dataIndex: 'supplier', key: 'supplier', render: (text, row) => text || row.supplierId },
             { title: 'Bid Amount', dataIndex: 'amount', key: 'amount', render: (val, row) => `${record.currency || 'TWD'} ${(val || row.price).toLocaleString()}` },
             { title: 'Submission Time', dataIndex: 'timestamp', key: 'timestamp', render: (t, row) => new Date(t || row.submittedAt).toLocaleString() },
-            { title: 'Attachment', key: 'attachment', render: () => <a href="#">View Attachment</a> } // Mock attachment
+            {
+                title: 'Attachments',
+                dataIndex: 'attachments',
+                key: 'attachments',
+                render: (files) => (
+                    files && files.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                            {files.map((file, index) => (
+                                <Tag key={index} icon={<FilePdfOutlined />} color="blue">
+                                    <a href="#" onClick={(e) => e.preventDefault()}>{file}</a>
+                                </Tag>
+                            ))}
+                        </div>
+                    ) : <span className="text-gray-400">No Attachments</span>
+                )
+            }
         ];
 
         return (

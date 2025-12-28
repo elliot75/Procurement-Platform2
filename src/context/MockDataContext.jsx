@@ -52,12 +52,12 @@ export const MockDataProvider = ({ children }) => {
         return false;
     };
 
-    const placeBid = async (projectId, supplierName, amount) => {
+    const placeBid = async (projectId, supplierName, amount, attachments = []) => {
         try {
             const res = await fetch(`${API_URL}/projects/${projectId}/bid`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ supplier: supplierName, amount })
+                body: JSON.stringify({ supplier: supplierName, amount, attachments })
             });
             if (res.ok) {
                 await refreshData();

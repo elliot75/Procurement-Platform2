@@ -141,6 +141,14 @@ router.get('/projects', async (req, res) => {
             LEFT JOIN users u ON p.created_by = u.id
             ORDER BY p.created_at DESC
         `;
+
+        // Update status for expired active projects
+        await query(`
+            UPDATE projects 
+            SET status = 'Ended' 
+            WHERE status = 'Active' AND end_time < NOW()
+        `);
+
         const projectsRes = await query(projectsQuery);
         const projects = projectsRes.rows;
 
@@ -159,7 +167,7 @@ router.get('/projects', async (req, res) => {
 
             // Get Bids
             const bidsRes = await query(
-                `SELECT b.amount, b.submitted_at as "submittedAt", u.username as "supplierId" 
+                `SELECT b.amount, b.submitted_at as "submittedAt", u.username as "supplierId", b.attachments 
                  FROM bids b
                  JOIN users u ON b.supplier_id = u.id
                  WHERE b.project_id = $1`,
@@ -170,7 +178,8 @@ router.get('/projects', async (req, res) => {
             p.bids = bidsRes.rows.map(b => ({
                 supplierId: b.supplierId,
                 price: Number(b.amount),
-                submittedAt: b.submittedAt
+                submittedAt: b.submittedAt,
+                attachments: b.attachments || []
             }));
 
             // Format dates
@@ -227,15 +236,15 @@ router.post('/projects', async (req, res) => {
 
 router.post('/projects/:id/bid', async (req, res) => {
     const { id } = req.params;
-    const { supplier, amount } = req.body;
+    const { supplier, amount, attachments } = req.body;
     try {
         const userRes = await query('SELECT id FROM users WHERE username = $1', [supplier]);
         if (userRes.rows.length === 0) return res.status(400).json({ message: 'Supplier not found' });
         const supplierId = userRes.rows[0].id;
 
         await query(
-            'INSERT INTO bids (project_id, supplier_id, amount) VALUES ($1, $2, $3)',
-            [id, supplierId, amount]
+            'INSERT INTO bids (project_id, supplier_id, amount, attachments) VALUES ($1, $2, $3, $4)',
+            [id, supplierId, amount, attachments]
         );
         res.json({ success: true });
     } catch (err) {
