@@ -10,17 +10,10 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import UserManagement from './pages/UserManagement';
+import Dashboard from './pages/Dashboard';
 import { Button } from 'antd';
 
-// Default Generic Dashboard for any role
-const GeneralDashboard = () => {
-  return (
-    <div className="text-center p-10">
-      <h1 className="text-2xl font-bold text-gray-700">Welcome to the Dashboard</h1>
-      <p className="mt-4 text-gray-500">Please select an action from the sidebar menu.</p>
-    </div>
-  );
-};
+// Default Generic Dashboard removed in favor of Dashboard.jsx
 
 // Protected Route Wrapper could be added here, 
 // but MainLayout handles basic redirection if no user.
@@ -35,7 +28,7 @@ function App() {
           {/* Protected Routes inside MainLayout */}
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<GeneralDashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
 
             {/* Role Specific Routes */}
             <Route path="operator/create" element={<OperatorDashboard />} />
