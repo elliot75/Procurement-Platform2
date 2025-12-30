@@ -109,21 +109,27 @@ const SupplierDashboard = () => {
                         <label className="block mb-2">Bid Amount ({selectedProject?.currency || 'TWD'})</label>
                         <InputNumber
                             className="w-full"
-                            prefix={selectedProject?.currency === 'USD' ? '$' : selectedProject?.currency === 'JPY' ? '¥' : 'NT$'}
+                            prefix={selectedProject?.currency === 'USD' ? '$' : selectedProject?.currency === 'VND' ? '₫' : 'NT$'}
                             min={1}
                             value={bidAmount}
                             onChange={setBidAmount}
                         />
                     </div>
                     <div>
-                        <label className="block mb-2">Technical Proposal (PDF Only)</label>
+                        <label className="block mb-2">附件 (支援多個檔案，單一檔案需小於 30MB)</label>
                         <Upload
                             multiple
                             fileList={fileList}
-                            beforeUpload={() => false} // Prevent auto upload
+                            beforeUpload={(file) => {
+                                const isLt30M = file.size / 1024 / 1024 < 30;
+                                if (!isLt30M) {
+                                    message.error(`${file.name} 檔案大小超過 30MB！`);
+                                }
+                                return isLt30M ? false : Upload.LIST_IGNORE;
+                            }}
                             onChange={({ fileList }) => setFileList(fileList)}
                         >
-                            <Button icon={<UploadOutlined />}>Click to Upload</Button>
+                            <Button icon={<UploadOutlined />}>上傳附件</Button>
                         </Upload>
                     </div>
                 </div>

@@ -14,6 +14,7 @@ const OperatorDashboard = () => {
     const [form] = Form.useForm();
     const [supplierForm] = Form.useForm();
     const [suppliers, setSuppliers] = useState([]);
+    const [fileList, setFileList] = useState([]);
 
     // Fetch supplier list
     useEffect(() => {
@@ -32,13 +33,14 @@ const OperatorDashboard = () => {
             createdBy: currentUser.username,
             invitedSuppliers: values.suppliers,
             currency: values.currency,
-            attachment: values.attachment ? values.attachment.file.name : null // Mock saving file name
+            attachment: fileList.map(f => f.name).join(', ') // Store multiple filenames
         };
         const success = await createProject(newProject);
         if (success) {
             message.success('Bidding Project Created Successfully!');
             setIsModalOpen(false);
             form.resetFields();
+            setFileList([]);
         } else {
             message.error('Failed to create project. Please try again.');
         }
@@ -139,14 +141,13 @@ const OperatorDashboard = () => {
 
             <Table dataSource={myProjects} columns={columns} rowKey="id" />
 
-            {/* Create Project Modal */}
             <Modal
                 title="Create New Bidding Project"
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
                 footer={null}
             >
-                <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ currency: 'TWD' }}>
+                <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ currency: 'VND' }}>
                     <Form.Item name="title" label="Project Title" rules={[{ required: true }]}>
                         <Input />
                     </Form.Item>
@@ -156,9 +157,9 @@ const OperatorDashboard = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
                             <Select>
-                                <Option value="TWD">TWD</Option>
+                                <Option value="VND">VND</Option>
                                 <Option value="USD">USD</Option>
-                                <Option value="JPY">JPY</Option>
+                                <Option value="TWD">TWD</Option>
                             </Select>
                         </Form.Item>
 
@@ -167,9 +168,20 @@ const OperatorDashboard = () => {
                         </Form.Item>
                     </div>
 
-                    <Form.Item name="attachment" label="Attachment">
-                        <Upload beforeUpload={() => false} maxCount={1}>
-                            <Button icon={<UploadOutlined />}>Click to Upload</Button>
+                    <Form.Item name="attachment" label="附件 (支援多個檔案，單一檔案需小於 30MB)">
+                        <Upload
+                            multiple
+                            fileList={fileList}
+                            beforeUpload={(file) => {
+                                const isLt30M = file.size / 1024 / 1024 < 30;
+                                if (!isLt30M) {
+                                    message.error(`${file.name} 檔案大小超過 30MB！`);
+                                }
+                                return isLt30M ? false : Upload.LIST_IGNORE;
+                            }}
+                            onChange={({ fileList }) => setFileList(fileList)}
+                        >
+                            <Button icon={<UploadOutlined />}>上傳附件</Button>
                         </Upload>
                     </Form.Item>
 

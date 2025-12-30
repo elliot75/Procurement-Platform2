@@ -68,9 +68,35 @@ const RegisterPage = () => {
                         name="name"
                         label="姓名"
                         rules={[{ required: true, message: '請輸入您的姓名' }]}
+                        tooltip={{
+                            title: (
+                                <div>
+                                    <div>• 供應商：請填入公司名稱</div>
+                                    <div>• 公司內部員工：請填入姓名並備註員工編號</div>
+                                    <div style={{ marginTop: 4, fontSize: 11, opacity: 0.8 }}>範例：John(12120001)</div>
+                                </div>
+                            ),
+                            icon: <UserOutlined />
+                        }}
                     >
-                        <Input prefix={<UserOutlined />} placeholder="請輸入姓名" />
+                        <Input
+                            prefix={<UserOutlined />}
+                            placeholder="供應商請填公司名 / 內部員工請填姓名(員工編號)"
+                        />
                     </Form.Item>
+
+                    <Alert
+                        message="姓名欄位填寫說明"
+                        description={
+                            <div className="text-xs">
+                                <p className="mb-1">📦 <strong>供應商</strong>：請填入公司名稱</p>
+                                <p>👤 <strong>公司內部員工</strong> (Operator/Auditor)：請填入姓名並備註員工編號，例如：John(12120001)</p>
+                            </div>
+                        }
+                        type="info"
+                        showIcon
+                        className="mb-4"
+                    />
 
                     <Form.Item
                         name="email"
