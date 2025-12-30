@@ -1,45 +1,42 @@
 import express from 'express';
 import { query } from './db.js';
+import { emailService } from './services/emailService.js';
+import crypto from 'crypto';
 
 export const router = express.Router();
 
 // --- Auth ---
 
 router.post('/auth/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
+
     try {
-        const result = await query(
-            'SELECT * FROM users WHERE username = $1',
-            [username]
-        );
-
-        // Fix: Schema only has username, let's stick to username for login or update query if email added.
-        // Actually I checked the schema in setup script: 
-        // CREATE TABLE IF NOT EXISTS users (... username VARCHAR(50) UNIQUE NOT NULL ... name ... role ...)
-        // There is no email column in my setup script! 
-        // Wait, MockDataContext has `loginMock` which checks `u.username === username || u.email === username`.
-        // The setup script didn't add email. I should probably add it or just stick to username.
-        // The user request didn't specify email field, and the "admin" creation didn't use it.
-        // I will stick to username for now to be safe with the schema I created.
-
-        const userResult = await query('SELECT * FROM users WHERE username = $1', [username]);
+        const userResult = await query('SELECT * FROM users WHERE email = $1', [email]);
         const user = userResult.rows[0];
 
         if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Email 或密碼錯誤' });
+        }
+
+        // Check email verification
+        if (!user.email_verified) {
+            return res.status(403).json({
+                message: 'Email 尚未驗證。請檢查您的信箱並完成驗證。',
+                code: 'EMAIL_NOT_VERIFIED'
+            });
         }
 
         if (user.role === 'Pending') {
-            return res.status(403).json({ message: 'Pending Approval' });
+            return res.status(403).json({ message: '帳號尚未經管理員審核' });
         }
 
-        // Simple plaintext password check as per user request flow/legacy mock.
+        // Simple plaintext password check
         if (user.password !== password) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Email 或密碼錯誤' });
         }
 
-        // Return user info (excluding password)
-        const { password: _, ...userWithoutPassword } = user;
+        // Return user info (excluding password and tokens  )
+        const { password: _, verification_token: __, verification_token_expires: ___, ...userWithoutPassword } = user;
         res.json(userWithoutPassword);
 
     } catch (err) {
@@ -49,28 +46,106 @@ router.post('/auth/login', async (req, res) => {
 });
 
 router.post('/auth/register', async (req, res) => {
-    const { username, password, name, role, email } = req.body; // Accepting email but not storing it yet if column missing?
-    // Let's add email to schema if I can? 
-    // Actually, I'll just ignore email for now as it wasn't in my CREATE TABLE. 
-    // Or I can ALTER table. 
-    // For now, let's stick to what we have.
+    const { email, password, name } = req.body;
 
     try {
-        const check = await query('SELECT * FROM users WHERE username = $1', [username]);
-        if (check.rows.length > 0) {
-            return res.status(400).json({ message: 'User already exists' });
+        // 1. Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ message: 'Email 格式不正確' });
         }
 
-        // Force 'Pending' role for new registrations usually, but let's follow logic:
-        // MockDataContext: const userWithRole = { ...newUser, role: 'Pending' };
-        const assignedRole = 'Pending';
+        // 2. Validate password strength
+        if (password.length < 8) {
+            return res.status(400).json({ message: '密碼至少需要 8 個字元' });
+        }
+        if (!/[A-Z]/.test(password)) {
+            return res.status(400).json({ message: '密碼必須包含至少一個大寫英文字母' });
+        }
+        if (!/[a-z]/.test(password)) {
+            return res.status(400).json({ message: '密碼必須包含至少一個小寫英文字母' });
+        }
+        if (!/[0-9]/.test(password)) {
+            return res.status(400).json({ message: '密碼必須包含至少一個數字' });
+        }
 
+        // 3. Check if email already exists
+        const check = await query('SELECT * FROM users WHERE email = $1', [email]);
+        if (check.rows.length > 0) {
+            return res.status(400).json({ message: '此 Email 已被註冊' });
+        }
+
+        // 4. Generate verification token
+        const verificationToken = crypto.randomUUID();
+        const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        // 5. Create user with Pending role and unverified email
+        // Use full email as username to ensure uniqueness across domains
         const result = await query(
-            'INSERT INTO users (username, password, name, role) VALUES ($1, $2, $3, $4) RETURNING id, username, name, role',
-            [username, password, name, assignedRole]
+            `INSERT INTO users (username, email, password, name, role, email_verified, verification_token, verification_token_expires)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             RETURNING id, email, name, role`,
+            [email, email, password, name, 'Pending', false, verificationToken, tokenExpires]
         );
 
-        res.json(result.rows[0]);
+        // 6. Send verification email
+        try {
+            await emailService.sendVerificationEmail(email, verificationToken);
+        } catch (emailError) {
+            console.error('Failed to send verification email:', emailError);
+            // Don't fail registration if email fails
+        }
+
+        res.json({
+            message: '註冊成功！驗證郵件已發送至您的信箱，請查收並完成驗證。',
+            user: result.rows[0]
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+// Email verification endpoint
+router.get('/verify-email', async (req, res) => {
+    const { token } = req.query;
+
+    try {
+        const result = await query(
+            'SELECT * FROM users WHERE verification_token = $1 AND verification_token_expires > NOW()',
+            [token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(400).json({
+                message: '驗證連結無效或已過期',
+                code: 'INVALID_TOKEN'
+            });
+        }
+
+        const user = result.rows[0];
+
+        // Update user as verified
+        await query(
+            `UPDATE users 
+             SET email_verified = TRUE, verification_token = NULL, verification_token_expires = NULL
+             WHERE id = $1`,
+            [user.id]
+        );
+
+        // Send notification to admin
+        try {
+            await emailService.sendAdminNotification(user.name, user.email);
+            console.log('Admin notified about new user:', user.email);
+        } catch (emailError) {
+            console.error('Failed to notify admin:', emailError);
+            // Don't fail verification if admin notification fails
+        }
+
+        res.json({
+            message: 'Email 驗證成功！',
+            success: true
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server Error' });
@@ -81,7 +156,7 @@ router.post('/auth/register', async (req, res) => {
 
 router.get('/users', async (req, res) => {
     try {
-        const result = await query('SELECT id, username, name, role, created_at FROM users ORDER BY id');
+        const result = await query('SELECT id, username, name, role, email, created_at FROM users ORDER BY id');
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: err.message });

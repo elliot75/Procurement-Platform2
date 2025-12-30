@@ -1,8 +1,7 @@
-// src/pages/LoginPage.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, Alert, message } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { MailOutlined, LockOutlined } from '@ant-design/icons';
 import { useMockData } from '../context/MockDataContext';
 
 const { Title } = Typography;
@@ -17,18 +16,21 @@ const LoginPage = () => {
         const { email, password } = values;
 
         try {
-            console.log(`Attempting login...`);
-
-            // Use Mock Login from Context
             const result = await loginMock(email, password);
 
-            if (result && result.error === 'Pending Approval') {
-                setError('Your account is pending Admin approval.');
+            if (result && result.error) {
+                if (result.error === 'EMAIL_NOT_VERIFIED') {
+                    setError('Email 尚未驗證。請檢查您的信箱並完成驗證。');
+                } else if (result.error === 'Pending Approval') {
+                    setError('您的帳號尚未經管理員審核。');
+                } else {
+                    setError('Email 或密碼錯誤');
+                }
                 return;
             }
 
             if (result && !result.error) {
-                message.success(`Welcome back, ${result.name}`);
+                message.success(`歡迎回來，${result.name}`);
                 navigate('/dashboard');
             } else {
                 throw new Error('Invalid credentials');
@@ -36,16 +38,16 @@ const LoginPage = () => {
 
         } catch (err) {
             console.error("Login failed:", err);
-            setError("Login failed. Check your username.");
+            setError("登入失敗。請檢查您的 Email 和密碼。");
         }
     };
 
     return (
-        <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
             <Card className="w-full max-w-md shadow-lg rounded-xl">
                 <div className="text-center mb-6">
-                    <Title level={2}>Procurement Platform</Title>
-                    <p className="text-gray-500">Sign in to your account</p>
+                    <Title level={2}>採購平台</Title>
+                    <p className="text-gray-500">登入您的帳號</p>
                 </div>
 
                 {error && <Alert message={error} type="error" showIcon className="mb-4" />}
@@ -59,28 +61,30 @@ const LoginPage = () => {
                 >
                     <Form.Item
                         name="email"
-                        rules={[{ required: true, message: 'Please input your Username or Email!' }]}
+                        label="Email"
+                        rules={[
+                            { required: true, message: '請輸入您的 Email' },
+                            { type: 'email', message: 'Email 格式不正確' }
+                        ]}
                     >
-                        <Input prefix={<UserOutlined />} placeholder="Username / Email" />
+                        <Input prefix={<MailOutlined />} placeholder="your.email@example.com" />
                     </Form.Item>
 
                     <Form.Item
                         name="password"
-                        rules={[{ required: true, message: 'Please input your Password!' }]}
+                        label="密碼"
+                        rules={[{ required: true, message: '請輸入密碼' }]}
                     >
-                        <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+                        <Input.Password prefix={<LockOutlined />} placeholder="請輸入密碼" />
                     </Form.Item>
 
                     <Form.Item>
-                        <div className="flex justify-between items-center mb-4">
-                            <a href="/forgot-password" className="text-gray-500 hover:text-blue-600 text-sm">Forgot Password?</a>
-                        </div>
                         <Button type="primary" htmlType="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                            Sign In
+                            登入
                         </Button>
                         <div className="text-center mt-4">
-                            <span className="text-gray-500">Don't have an account? </span>
-                            <a href="/register" className="text-blue-600 hover:underline">Register</a>
+                            <span className="text-gray-500">還沒有帳號嗎？ </span>
+                            <Link to="/register" className="text-blue-600 hover:underline">註冊</Link>
                         </div>
                     </Form.Item>
                 </Form>

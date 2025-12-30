@@ -7,12 +7,19 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 const OperatorDashboard = () => {
-    const { projects, createProject, currentUser, autoAddSupplier, cancelProject } = useMockData();
+    const { projects, createProject, currentUser, autoAddSupplier, cancelProject, users } = useMockData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAddSupplierModalOpen, setIsAddSupplierModalOpen] = useState(false);
     const [currentProject, setCurrentProject] = useState(null);
     const [form] = Form.useForm();
     const [supplierForm] = Form.useForm();
+    const [suppliers, setSuppliers] = useState([]);
+
+    // Fetch supplier list
+    useEffect(() => {
+        const supplierUsers = users.filter(u => u.role === 'Supplier');
+        setSuppliers(supplierUsers);
+    }, [users]);
 
     // Filter projects created by this operator
     const myProjects = projects.filter(p => currentUser.role === 'Admin' || p.createdBy === currentUser.username);
@@ -167,10 +174,12 @@ const OperatorDashboard = () => {
                     </Form.Item>
 
                     <Form.Item name="suppliers" label="Invite Suppliers" rules={[{ required: true }]}>
-                        <Select mode="tags" placeholder="Enter supplier codes">
-                            <Option value="supplier1">Supplier 1</Option>
-                            <Option value="supplier2">Supplier 2</Option>
-                            <Option value="supplier3">Supplier 3</Option>
+                        <Select mode="multiple" placeholder="選擇供應商">
+                            {suppliers.map(supplier => (
+                                <Option key={supplier.username} value={supplier.username}>
+                                    {supplier.name} ({supplier.email})
+                                </Option>
+                            ))}
                         </Select>
                     </Form.Item>
                     <Button type="primary" htmlType="submit" block>Launch Project</Button>
@@ -186,11 +195,12 @@ const OperatorDashboard = () => {
             >
                 <Form form={supplierForm} layout="vertical" onFinish={handleAddSupplier}>
                     <Form.Item name="supplier" label="Select Supplier" rules={[{ required: true }]}>
-                        <Select mode="tags" placeholder="Enter supplier codes">
-                            <Option value="supplier1">Supplier 1</Option>
-                            <Option value="supplier2">Supplier 2</Option>
-                            <Option value="supplier3">Supplier 3</Option>
-                            <Option value="supplier4">Supplier 4</Option>
+                        <Select mode="multiple" placeholder="選擇供應商">
+                            {suppliers.map(supplier => (
+                                <Option key={supplier.username} value={supplier.username}>
+                                    {supplier.name} ({supplier.email})
+                                </Option>
+                            ))}
                         </Select>
                     </Form.Item>
                     <Button type="primary" htmlType="submit" block>Add Supplier</Button>

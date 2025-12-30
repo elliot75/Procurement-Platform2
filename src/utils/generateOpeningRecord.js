@@ -44,23 +44,11 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
     doc.text(`Currency: ${project.currency || 'TWD'}`, 14, 78);
 
     // 3. Supplier Table
-    const tableColumn = ["ID", "Supplier Name", "Status", "Submission Time", "Bid Price", "Attachments", "Negotiated Price"];
+    const tableColumn = ["ID", "Supplier Name", "Status", "Submission Time", "Bid Price", "Negotiated Price"];
     const tableRows = [];
 
     suppliers.forEach(supplier => {
-        const bidPrice = supplier.price ? `${project.currency || 'TWD'} ${supplier.price.toLocaleString()}` : "-";
-
-        // Format attachments listing
-        let attachmentStr = "-";
-        if (supplier.attachments && supplier.attachments.length > 0) {
-            attachmentStr = supplier.attachments.join(", ");
-        } else if (project.bids) {
-            // Fallback lookup if not passed in 'supplier' object
-            const bid = project.bids.find(b => b.supplierId === supplier.id || b.supplier === supplier.id);
-            if (bid && bid.attachments && bid.attachments.length > 0) {
-                attachmentStr = bid.attachments.join(", ");
-            }
-        }
+        const bidPrice = supplier.price ? supplier.price.toLocaleString() : "-";
 
         const bidData = [
             supplier.id,
@@ -68,21 +56,17 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
             supplier.hasBid ? "Submitted" : "No Bid",
             formatDate(supplier.bidTime),
             bidPrice,
-            attachmentStr,
             "" // Empty column for Negotiated Price
         ];
         tableRows.push(bidData);
     });
 
     autoTable(doc, {
-        startY: 85, // Adjusted for extra line
+        startY: 85,
         head: [tableColumn],
         body: tableRows,
         theme: 'grid',
-        headStyles: { fillColor: [41, 128, 185] }, // Blue header
-        columnStyles: {
-            5: { cellWidth: 40 } // Attachments column width
-        }
+        headStyles: { fillColor: [41, 128, 185] } // Blue header
     });
 
     // 4. Signatures

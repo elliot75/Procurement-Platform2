@@ -5,38 +5,56 @@ import { useMockData } from '../context/MockDataContext';
 import { generateOpeningRecord } from '../utils/generateOpeningRecord';
 
 const AuditorDashboard = () => {
-    const { projects, openProject, currentUser } = useMockData();
+    const { projects, openProject, currentUser, users } = useMockData();
 
     // Auditor sees Ended or Opened projects
     const auditInfo = projects.filter(p => p.status === 'Ended' || p.status === 'Opened');
 
     const handleOpenBid = (project) => {
         try {
-            // 1. Generate PDF Data
-            // Map suppliers to their LATEST bid
-            const invitees = project.invitedSuppliers || [];
-            const bidders = (project.bids || []).map(b => b.supplier || b.supplierId);
+            // 1. Generate PDF Data with ALL bids (not just latest)
+            const allBids = project.bids || [];
 
-            // Unique set of all involved suppliers (invited + actual bidders)
-            const allSupplierIds = [...new Set([...invitees, ...bidders])].filter(id => id); // filter truthy
+            // Sort all bids by submission time (earliest first for PDF display)
+            const sortedBids = allBids.sort((a, b) =>
+                new Date(a.timestamp || a.submittedAt) - new Date(b.timestamp || b.submittedAt)
+            );
 
-            const suppliers = allSupplierIds.map(sId => {
-                // Get all bids from this supplier
-                const supplierBids = (project.bids || []).filter(b => b.supplier === sId || b.supplierId === sId);
-                // Sort by time desc
-                const latestBid = supplierBids.sort((a, b) => new Date(b.timestamp || b.submittedAt) - new Date(a.timestamp || a.submittedAt))[0];
+            // Map each bid to include supplier real name from users table
+            const bidData = sortedBids.map(bid => {
+                const supplierUsername = bid.supplier || bid.supplierId;
+                const supplierUser = users.find(u => u.username === supplierUsername);
 
                 return {
-                    id: sId,
-                    name: `Company ${sId.toUpperCase()}`,
-                    hasBid: !!latestBid,
-                    bidTime: latestBid ? (latestBid.timestamp || latestBid.submittedAt) : null,
-                    price: latestBid ? (latestBid.amount || latestBid.price) : null,
-                    attachments: latestBid ? (latestBid.attachments || []) : []
+                    id: supplierUsername,
+                    name: supplierUser ? supplierUser.name : supplierUsername, // Use real name
+                    hasBid: true,
+                    bidTime: bid.timestamp || bid.submittedAt,
+                    price: bid.amount || bid.price,
+                    attachments: bid.attachments || []
                 };
             });
 
-            console.log("Generating PDF for:", project.title, "Suppliers:", suppliers.length);
+            // Also include invited suppliers who didn't bid
+            const invitees = project.invitedSuppliers || [];
+            const bidderUsernames = bidData.map(b => b.id);
+            const nonBidders = invitees
+                .filter(supplierId => !bidderUsernames.includes(supplierId))
+                .map(supplierId => {
+                    const supplierUser = users.find(u => u.username === supplierId);
+                    return {
+                        id: supplierId,
+                        name: supplierUser ? supplierUser.name : supplierId,
+                        hasBid: false,
+                        bidTime: null,
+                        price: null,
+                        attachments: []
+                    };
+                });
+
+            const suppliers = [...bidData, ...nonBidders];
+
+            console.log("Generating PDF for:", project.title, "Total bid entries:", suppliers.length);
             generateOpeningRecord(project, suppliers, currentUser);
 
             // 2. Update Status (only if not already opened, else just download)

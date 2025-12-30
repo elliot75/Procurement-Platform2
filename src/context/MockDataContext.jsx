@@ -129,14 +129,19 @@ export const MockDataProvider = ({ children }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newUser)
             });
+
+            const data = await res.json();
+
             if (res.ok) {
                 await refreshData();
-                return true;
+                return { success: true, message: data.message, user: data.user };
+            } else {
+                return { success: false, message: data.message || '註冊失敗' };
             }
         } catch (err) {
             console.error(err);
+            return { success: false, message: '網路錯誤，請稍後再試' };
         }
-        return false;
     };
 
     const updateUser = async (username, updates) => {
@@ -203,12 +208,12 @@ export const MockDataProvider = ({ children }) => {
         return { success: false, message: 'Incorrect old password' };
     };
 
-    const loginMock = async (username, password) => {
+    const loginMock = async (email, password) => {
         try {
             const res = await fetch(`${API_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ email, password })
             });
 
             if (res.ok) {
@@ -218,7 +223,7 @@ export const MockDataProvider = ({ children }) => {
                 return user;
             } else {
                 const err = await res.json();
-                return { error: err.message || 'Login failed' };
+                return { error: err.code || err.message || 'Login failed' };
             }
         } catch (err) {
             console.error(err);

@@ -8,6 +8,7 @@ import SupplierDashboard from './pages/SupplierDashboard';
 import AuditorDashboard from './pages/AuditorDashboard';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import UserManagement from './pages/UserManagement';
 import { Button } from 'antd';
 
@@ -49,6 +50,7 @@ function App() {
           </Route>
 
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Routes>
       </Router>
