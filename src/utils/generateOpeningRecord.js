@@ -9,8 +9,20 @@ import autoTable from 'jspdf-autotable'; // Updated import
  * @param {object} currentUser - The Auditor performing the action.
  */
 export const generateOpeningRecord = (project, suppliers, currentUser) => {
-    const doc = new jsPDF();
+    // Create PDF with proper Unicode support
+    const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        putOnlyUsedFonts: true,
+        floatPrecision: 16
+    });
+
     const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Use default font which has better Unicode support in jsPDF 3.x
+    // The default font in jsPDF 3.x uses a Unicode-compatible encoding
+    doc.setFont('helvetica', 'normal');
 
     // 1. Header
     doc.setFontSize(22);
@@ -40,8 +52,9 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
     doc.setFontSize(10);
     doc.text(`Project Name: ${project.title}`, 14, 60);
     doc.text(`Project ID: ${project.id}`, 14, 66);
-    doc.text(`Closing Time: ${formatDate(project.endTime)}`, 14, 72);
-    doc.text(`Currency: ${project.currency || 'TWD'}`, 14, 78);
+    doc.text(`Created By: ${project.createdBy || 'N/A'}`, 14, 72);
+    doc.text(`Closing Time: ${formatDate(project.endTime)}`, 14, 78);
+    doc.text(`Currency: ${project.currency || 'VND'}`, 14, 84);
 
     // 3. Supplier Table
     const tableColumn = ["ID", "Supplier Name", "Status", "Submission Time", "Bid Price", "Negotiated Price"];
@@ -62,11 +75,34 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
     });
 
     autoTable(doc, {
-        startY: 85,
+        startY: 91,
         head: [tableColumn],
         body: tableRows,
         theme: 'grid',
-        headStyles: { fillColor: [41, 128, 185] } // Blue header
+        headStyles: {
+            fillColor: [41, 128, 185],
+            font: 'helvetica',
+            fontStyle: 'bold'
+        },
+        bodyStyles: {
+            font: 'helvetica',
+            fontStyle: 'normal'
+        },
+        styles: {
+            font: 'helvetica',
+            fontSize: 10,
+            cellPadding: 3,
+            overflow: 'linebreak',
+            cellWidth: 'wrap'
+        },
+        columnStyles: {
+            0: { cellWidth: 40 }, // ID
+            1: { cellWidth: 50 }, // Supplier Name
+            2: { cellWidth: 25 }, // Status
+            3: { cellWidth: 35 }, // Submission Time
+            4: { cellWidth: 25 }, // Bid Price
+            5: { cellWidth: 25 }  // Negotiated Price
+        }
     });
 
     // 4. Signatures

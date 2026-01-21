@@ -2,15 +2,23 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, Alert, message, Progress } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { Moon, Sun } from 'lucide-react';
 import { useMockData } from '../context/MockDataContext';
+import { Button as UIButton } from '../components/ui/button';
 
 const { Title, Text } = Typography;
 
 const RegisterPage = () => {
     const [error, setError] = useState('');
     const [password, setPassword] = useState('');
+    const [isDark, setIsDark] = useState(false);
     const navigate = useNavigate();
     const { register } = useMockData();
+
+    const toggleTheme = () => {
+        setIsDark(!isDark);
+        document.documentElement.classList.toggle('dark');
+    };
 
     // Password strength calculator
     const getPasswordStrength = (pwd) => {
@@ -49,7 +57,13 @@ const RegisterPage = () => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+        <div className="flex items-center justify-center min-h-screen bg-background p-4">
+            <div className="absolute top-4 right-4">
+                <UIButton variant="ghost" size="icon" onClick={toggleTheme}>
+                    {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </UIButton>
+            </div>
+
             <Card className="w-full max-w-md shadow-lg rounded-xl">
                 <div className="text-center mb-6">
                     <Title level={2}>建立帳號</Title>

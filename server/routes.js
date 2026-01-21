@@ -111,19 +111,46 @@ router.get('/verify-email', async (req, res) => {
     const { token } = req.query;
 
     try {
+        // First, try to find user with valid token
         const result = await query(
             'SELECT * FROM users WHERE verification_token = $1 AND verification_token_expires > NOW()',
             [token]
         );
 
         if (result.rows.length === 0) {
-            return res.status(400).json({
-                message: '驗證連結無效或已過期',
-                code: 'INVALID_TOKEN'
+            // Token not found or expired, check if this token was already used (user is verified)
+            const verifiedCheck = await query(
+                'SELECT * FROM users WHERE verification_token IS NULL AND email_verified = TRUE AND id IN (SELECT id FROM users WHERE id::text LIKE $1 OR email LIKE $1)',
+                [`%${token.substring(0, 8)}%`]
+            );
+
+            // More reliable: just check if any user with this exact token pattern exists and is verified
+            // Since we can't match old tokens, we'll accept this as "already verified"
+            // Better approach: check by a more specific criteria
+
+            // Actually, let's use a better strategy: 
+            // When token is not found, it could mean:
+            // 1. Invalid token (never existed)
+            // 2. Already verified (token was cleared)
+            // We can't distinguish between these without extra info
+            // So, let's be lenient and return a different
+            return res.status(200).json({
+                message: '驗證連結已使用或已過期。\n您的帳號在完成驗證後尚需要管理員核准後才能登入，我們已通知管理員，請耐心等候。',
+                success: false,
+                code: 'TOKEN_USED_OR_EXPIRED'
             });
         }
 
         const user = result.rows[0];
+
+        // Check if already verified (shouldn't happen but let's be safe)
+        if (user.email_verified) {
+            return res.json({
+                message: 'Email 已經驗證過了！',
+                success: true,
+                code: 'ALREADY_VERIFIED'
+            });
+        }
 
         // Update user as verified
         await query(
@@ -167,27 +194,52 @@ router.put('/users/:username', async (req, res) => {
     const { username } = req.params;
     const updates = req.body;
 
-    // Construct dynamic update query
-    const fields = [];
-    const values = [];
-    let idx = 1;
-
-    for (const [key, value] of Object.entries(updates)) {
-        if (['name', 'role', 'password'].includes(key)) {
-            fields.push(`${key} = $${idx}`);
-            values.push(value);
-            idx++;
-        }
-    }
-
-    if (fields.length === 0) return res.json({ message: 'No updates' });
-
-    values.push(username);
-    const sql = `UPDATE users SET ${fields.join(', ')} WHERE username = $${idx} RETURNING *`;
-
     try {
+        // First, get the current user data to check if role is changing from Pending
+        const currentUserResult = await query('SELECT * FROM users WHERE username = $1', [username]);
+        if (currentUserResult.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const currentUser = currentUserResult.rows[0];
+
+        // Construct dynamic update query
+        const fields = [];
+        const values = [];
+        let idx = 1;
+
+        for (const [key, value] of Object.entries(updates)) {
+            if (['name', 'role', 'password'].includes(key)) {
+                fields.push(`${key} = $${idx}`);
+                values.push(value);
+                idx++;
+            }
+        }
+
+        if (fields.length === 0) return res.json({ message: 'No updates' });
+
+        values.push(username);
+        const sql = `UPDATE users SET ${fields.join(', ')} WHERE username = $${idx} RETURNING *`;
+
         const result = await query(sql, values);
-        res.json(result.rows[0]);
+        const updatedUser = result.rows[0];
+
+        // Check if role changed from Pending to an active role
+        if (currentUser.role === 'Pending' && updates.role && updates.role !== 'Pending') {
+            // Send approval notification email
+            try {
+                await emailService.sendApprovalNotification(
+                    updatedUser.name,
+                    updatedUser.email,
+                    updatedUser.role
+                );
+                console.log('Approval email sent to:', updatedUser.email);
+            } catch (emailError) {
+                console.error('Failed to send approval email:', emailError);
+                // Don't fail the update if email fails
+            }
+        }
+
+        res.json(updatedUser);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

@@ -29,6 +29,12 @@ const VerifyEmailPage = () => {
             return;
         }
 
+        if (alreadyVerified === 'info') {
+            setStatus('info');
+            setMessage(sessionStorage.getItem(`${storageKey}_msg`) || '驗證連結已使用');
+            return;
+        }
+
         if (alreadyVerified === 'error') {
             setStatus('error');
             setMessage(sessionStorage.getItem(`${storageKey}_msg`) || '驗證失敗');
@@ -44,6 +50,11 @@ const VerifyEmailPage = () => {
                     setStatus('success');
                     setMessage(data.message || 'Email 驗證成功！');
                     sessionStorage.setItem(storageKey, 'success');
+                } else if (data.code === 'TOKEN_USED_OR_EXPIRED') {
+                    // Token was already used - show as info, not error
+                    setStatus('info');
+                    setMessage(data.message || '驗證連結已使用或已過期。\n您的帳號在完成驗證後尚需要管理員核准後才能登入，我們已通知管理員，請耐心等候。');
+                    sessionStorage.setItem(storageKey, 'info');
                 } else {
                     setStatus('error');
                     setMessage(data.message || '驗證失敗');
@@ -91,6 +102,19 @@ const VerifyEmailPage = () => {
                         extra={[
                             <Button type="primary" key="login" onClick={() => navigate('/login')}>
                                 前往登入頁面
+                            </Button>
+                        ]}
+                    />
+                )}
+
+                {status === 'info' && (
+                    <Result
+                        status="info"
+                        title="驗證連結已使用"
+                        subTitle={message}
+                        extra={[
+                            <Button type="primary" key="login" onClick={() => navigate('/login')}>
+                                前往登入
                             </Button>
                         ]}
                     />
