@@ -57,11 +57,14 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
     doc.text(`Currency: ${project.currency || 'VND'}`, 14, 84);
 
     // 3. Supplier Table
-    const tableColumn = ["ID", "Supplier Name", "Status", "Submission Time", "Bid Price", "Negotiated Price"];
+    const tableColumn = ["ID", "Supplier Name", "Status", "Submission Time", "Bid Price", "Attachments"];
     const tableRows = [];
 
     suppliers.forEach(supplier => {
         const bidPrice = supplier.price ? supplier.price.toLocaleString() : "-";
+        const attachments = supplier.attachments && supplier.attachments.length > 0
+            ? supplier.attachments.join(', ')
+            : "-";
 
         const bidData = [
             supplier.id,
@@ -69,7 +72,7 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
             supplier.hasBid ? "Submitted" : "No Bid",
             formatDate(supplier.bidTime),
             bidPrice,
-            "" // Empty column for Negotiated Price
+            attachments
         ];
         tableRows.push(bidData);
     });
@@ -90,18 +93,18 @@ export const generateOpeningRecord = (project, suppliers, currentUser) => {
         },
         styles: {
             font: 'helvetica',
-            fontSize: 10,
-            cellPadding: 3,
+            fontSize: 9,
+            cellPadding: 2,
             overflow: 'linebreak',
             cellWidth: 'wrap'
         },
         columnStyles: {
-            0: { cellWidth: 40 }, // ID
-            1: { cellWidth: 50 }, // Supplier Name
-            2: { cellWidth: 25 }, // Status
+            0: { cellWidth: 30 }, // ID
+            1: { cellWidth: 40 }, // Supplier Name
+            2: { cellWidth: 20 }, // Status
             3: { cellWidth: 35 }, // Submission Time
             4: { cellWidth: 25 }, // Bid Price
-            5: { cellWidth: 25 }  // Negotiated Price
+            5: { cellWidth: 40 }  // Attachments
         }
     });
 
