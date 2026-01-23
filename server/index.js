@@ -14,6 +14,11 @@ app.use(express.json());
 // API Routes
 app.use('/api', router);
 
+// Health check endpoint for Docker
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.get('/', (req, res) => {
     res.send('Procurement Platform API is running');
 });
