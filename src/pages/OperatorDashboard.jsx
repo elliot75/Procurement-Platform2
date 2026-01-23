@@ -41,7 +41,8 @@ const OperatorDashboard = () => {
             createdBy: currentUser.username,
             invitedSuppliers: values.suppliers,
             currency: values.currency,
-            attachment: fileList.map(f => f.name).join(', ') // Store multiple filenames
+            attachment: fileList.map(f => f.name).join(', '), // Store multiple filenames
+            requiresAuditorOpening: values.requiresAuditorOpening || false
         };
         const success = await createProject(newProject);
         if (success) {
@@ -200,8 +201,9 @@ const OperatorDashboard = () => {
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
                 footer={null}
+                width={700}
             >
-                <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ currency: 'VND' }}>
+                <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ currency: 'VND', requiresAuditorOpening: false }}>
                     <Form.Item name="title" label="Project Title" rules={[{ required: true }]}>
                         <Input />
                     </Form.Item>
@@ -248,6 +250,20 @@ const OperatorDashboard = () => {
                             ))}
                         </Select>
                     </Form.Item>
+
+                    <Form.Item name="requiresAuditorOpening" valuePropName="checked">
+                        <div className="flex items-start space-x-2 p-3 bg-gray-50 rounded border border-gray-200">
+                            <input type="checkbox" id="requiresAuditorOpening" className="mt-1" />
+                            <label htmlFor="requiresAuditorOpening" className="cursor-pointer">
+                                <div className="font-medium text-gray-900">需要由 Auditor 進行開標</div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                    勾選此選項後，只有 Auditor 可以執行開標作業。<br />
+                                    若不勾選，則由專案建立者自行開標。
+                                </div>
+                            </label>
+                        </div>
+                    </Form.Item>
+
                     <Button type="primary" htmlType="submit" block>Launch Project</Button>
                 </Form>
             </Modal>

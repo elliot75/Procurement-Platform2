@@ -1,43 +1,56 @@
 import React from 'react';
-import { Table, Button, Tag, Space, message, Card, Statistic, Row, Col } from 'antd';
+import { Table, Button, Tag, Space, message, Card, Statistic, Row, Col, Modal } from 'antd';
 import { FilePdfOutlined, SafetyCertificateOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined } from '@ant-design/icons';
 import { useMockData } from '../context/MockDataContext';
 import { generateOpeningRecord } from '../utils/generateOpeningRecord';
 
-const AuditorDashboard = () => {
+const OperatorOpeningHall = () => {
     const { projects, openProject, currentUser, users } = useMockData();
 
-    // Auditor sees Ended or Opened projects that require auditor opening
-    const auditInfo = projects.filter(p =>
-        (p.status === 'Ended' || p.status === 'Opened') &&
-        p.requires_auditor_opening === true
+    // Show only projects created by this operator that don't require auditor opening
+    const myOpeningProjects = projects.filter(p =>
+        (p.createdBy === currentUser.username || p.created_by_name === currentUser.username) &&
+        !p.requires_auditor_opening &&
+        (p.status === 'Ended' || p.status === 'Opened')
     );
 
     const stats = {
-        totalProjects: projects.length,
-        endedProjects: projects.filter(p => p.status === 'Ended').length,
-        activeProjects: projects.filter(p => p.status === 'Active').length,
-        totalBids: projects.reduce((sum, p) => sum + p.bids.length, 0),
+        totalProjects: myOpeningProjects.length,
+        endedProjects: myOpeningProjects.filter(p => p.status === 'Ended').length,
+        openedProjects: myOpeningProjects.filter(p => p.status === 'Opened').length,
+    };
+
+    const handleAttachmentClick = (fileName, supplier, projectTitle) => {
+        Modal.info({
+            title: '附件資訊',
+            content: (
+                <div>
+                    <p><strong>檔案名稱:</strong> {fileName}</p>
+                    <p><strong>供應商:</strong> {supplier}</p>
+                    <p><strong>專案:</strong> {projectTitle}</p>
+                    <p className="mt-4 text-gray-500">
+                        註：這是模擬系統，實際檔案需要整合檔案儲存服務（如 S3, 本地儲存等）才能下載。
+                    </p>
+                </div>
+            ),
+            okText: '關閉',
+        });
     };
 
     const handleOpenBid = (project) => {
         try {
-            // 1. Generate PDF Data with ALL bids (not just latest)
             const allBids = project.bids || [];
-
-            // Sort all bids by submission time (earliest first for PDF display)
             const sortedBids = allBids.sort((a, b) =>
                 new Date(a.timestamp || a.submittedAt) - new Date(b.timestamp || b.submittedAt)
             );
 
-            // Map each bid to include supplier real name from users table
             const bidData = sortedBids.map(bid => {
                 const supplierUsername = bid.supplier || bid.supplierId;
                 const supplierUser = users.find(u => u.username === supplierUsername);
 
                 return {
                     id: supplierUsername,
-                    name: supplierUser ? supplierUser.name : supplierUsername, // Use real name
+                    name: supplierUser ? supplierUser.name : supplierUsername,
                     hasBid: true,
                     bidTime: bid.timestamp || bid.submittedAt,
                     price: bid.amount || bid.price,
@@ -45,7 +58,6 @@ const AuditorDashboard = () => {
                 };
             });
 
-            // Also include invited suppliers who didn't bid
             const invitees = project.invitedSuppliers || [];
             const bidderUsernames = bidData.map(b => b.id);
             const nonBidders = invitees
@@ -67,7 +79,6 @@ const AuditorDashboard = () => {
             console.log("Generating PDF for:", project.title, "Total bid entries:", suppliers.length);
             generateOpeningRecord(project, suppliers, currentUser);
 
-            // 2. Update Status (only if not already opened, else just download)
             if (project.status !== 'Opened') {
                 openProject(project.id, currentUser.name);
                 message.success('Project Opened & Record Generated!');
@@ -122,25 +133,6 @@ const AuditorDashboard = () => {
     ];
 
     const expandedRowRender = (record) => {
-        const handleAttachmentClick = (fileName, supplier) => {
-            // Since this is a mock system without actual file storage,
-            // we'll show a modal with file information
-            Modal.info({
-                title: '附件資訊',
-                content: (
-                    <div>
-                        <p><strong>檔案名稱:</strong> {fileName}</p>
-                        <p><strong>供應商:</strong> {supplier}</p>
-                        <p><strong>專案:</strong> {record.title}</p>
-                        <p className="mt-4 text-gray-500">
-                            註：這是模擬系統，實際檔案需要整合檔案儲存服務（如 S3, 本地儲存等）才能下載。
-                        </p>
-                    </div>
-                ),
-                okText: '關閉',
-            });
-        };
-
         const historyColumns = [
             { title: 'Supplier', dataIndex: 'supplier', key: 'supplier', render: (text, row) => text || row.supplierId },
             { title: 'Bid Amount', dataIndex: 'amount', key: 'amount', render: (val, row) => `${record.currency || 'TWD'} ${(val || row.price).toLocaleString()}` },
@@ -158,7 +150,7 @@ const AuditorDashboard = () => {
                                     icon={<FilePdfOutlined />}
                                     color="blue"
                                     className="cursor-pointer hover:bg-blue-600 transition-colors"
-                                    onClick={() => handleAttachmentClick(file, bidRecord.supplier || bidRecord.supplierId)}
+                                    onClick={() => handleAttachmentClick(file, bidRecord.supplier || bidRecord.supplierId, record.title)}
                                 >
                                     {file}
                                 </Tag>
@@ -185,11 +177,11 @@ const AuditorDashboard = () => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">Auditor Dashboard</h2>
+            <h2 className="text-2xl font-bold mb-6">My Opening Hall</h2>
 
             {/* Statistics Cards */}
             <Row gutter={16} className="mb-6">
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={8}>
                     <Card>
                         <Statistic
                             title="Total Projects"
@@ -198,44 +190,34 @@ const AuditorDashboard = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={8}>
                     <Card>
                         <Statistic
-                            title="Projects to Audit"
+                            title="Awaiting Opening"
                             value={stats.endedProjects}
-                            prefix={<CheckCircleOutlined />}
-                            valueStyle={{ color: '#cf1322' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
-                        <Statistic
-                            title="Active Projects"
-                            value={stats.activeProjects}
                             prefix={<ClockCircleOutlined />}
-                            valueStyle={{ color: '#3f8600' }}
+                            valueStyle={{ color: '#faad14' }}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={8}>
                     <Card>
                         <Statistic
-                            title="Total Bids"
-                            value={stats.totalBids}
-                            prefix={<TeamOutlined />}
+                            title="Opened"
+                            value={stats.openedProjects}
+                            prefix={<CheckCircleOutlined />}
+                            valueStyle={{ color: '#52c41a' }}
                         />
                     </Card>
                 </Col>
             </Row>
 
-            {/* Opening Hall */}
-            <h3 className="text-lg font-semibold mb-4">Opening Hall</h3>
-            <Card className="mb-4 bg-yellow-50 border-yellow-200">
-                <p>Only projects that have passed their <b>Closing Time</b> will appear here for opening.</p>
+            <Card className="mb-4 bg-blue-50 border-blue-200">
+                <p>這裡顯示您建立且<b>未勾選「需要由 Auditor 進行開標」</b>的專案。只有截止時間已過的專案才會出現在此處。</p>
             </Card>
+
             <Table
-                dataSource={auditInfo}
+                dataSource={myOpeningProjects}
                 columns={columns}
                 rowKey="id"
                 expandable={{ expandedRowRender, rowExpandable: record => record.bids.length > 0 }}
@@ -244,4 +226,4 @@ const AuditorDashboard = () => {
     );
 };
 
-export default AuditorDashboard;
+export default OperatorOpeningHall;

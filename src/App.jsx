@@ -4,6 +4,7 @@ import { MockDataProvider } from './context/MockDataContext';
 import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
 import OperatorDashboard from './pages/OperatorDashboard';
+import OperatorOpeningHall from './pages/OperatorOpeningHall';
 import SupplierDashboard from './pages/SupplierDashboard';
 import AuditorDashboard from './pages/AuditorDashboard';
 import RegisterPage from './pages/RegisterPage';
@@ -33,6 +34,7 @@ function App() {
             {/* Role Specific Routes */}
             <Route path="operator/create" element={<OperatorDashboard />} />
             <Route path="operator/list" element={<OperatorDashboard />} /> {/* Reusing same component for demo */}
+            <Route path="operator/opening" element={<OperatorOpeningHall />} />
 
             <Route path="supplier/invites" element={<SupplierDashboard />} />
 

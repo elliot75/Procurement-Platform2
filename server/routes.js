@@ -330,10 +330,10 @@ router.post('/projects', async (req, res) => {
         const userId = userRes.rows[0].id;
 
         const result = await query(
-            `INSERT INTO projects (title, description, status, created_by, created_at, end_time, currency, attachment)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING id, title, description, status, created_at, end_time, currency, attachment`,
-            [p.title, p.description, 'Active', userId, new Date(), p.endTime, p.currency || 'TWD', p.attachment]
+            `INSERT INTO projects (title, description, status, created_by, created_at, end_time, currency, attachment, requires_auditor_opening)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING id, title, description, status, created_at, end_time, currency, attachment, requires_auditor_opening`,
+            [p.title, p.description, 'Active', userId, new Date(), p.endTime, p.currency || 'TWD', p.attachment, p.requiresAuditorOpening || false]
         );
 
         const newProject = result.rows[0];

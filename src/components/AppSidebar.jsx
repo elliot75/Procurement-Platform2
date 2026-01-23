@@ -40,6 +40,11 @@ export function AppSidebar({ collapsed, setCollapsed, userRole }) {
                     title: "My Projects",
                     url: "/operator/list",
                     icon: BarChart3,
+                },
+                {
+                    title: "My Opening Hall",
+                    url: "/operator/opening",
+                    icon: FileCheck,
                 }
             );
         }
