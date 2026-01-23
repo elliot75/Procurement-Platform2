@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, DatePicker, Select, Tag, Space, message, Upload, Popconfirm, Card, Statistic, Row, Col } from 'antd';
-import { PlusOutlined, UploadOutlined, UserAddOutlined, StopOutlined, ProjectOutlined, CheckCircleOutlined, ClockCircleOutlined, DollarOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined, UserAddOutlined, StopOutlined, ProjectOutlined, CheckCircleOutlined, ClockCircleOutlined, DollarOutlined, FilterOutlined } from '@ant-design/icons';
 import { useMockData } from '../context/MockDataContext';
 
 const { TextArea } = Input;
 const { Option } = Select;
+const API_URL = 'http://localhost:3000/api';
 
 const OperatorDashboard = () => {
     const { projects, createProject, currentUser, autoAddSupplier, cancelProject, users } = useMockData();
@@ -14,13 +15,55 @@ const OperatorDashboard = () => {
     const [form] = Form.useForm();
     const [supplierForm] = Form.useForm();
     const [suppliers, setSuppliers] = useState([]);
+    const [filteredSuppliers, setFilteredSuppliers] = useState([]);
     const [fileList, setFileList] = useState([]);
+    const [businessCategories, setBusinessCategories] = useState([]);
+    const [selectedCategories, setSelectedCategories] = useState([]);
+    const [searchText, setSearchText] = useState('');
 
-    // Fetch supplier list
+    // Fetch supplier list and business categories
     useEffect(() => {
         const supplierUsers = users.filter(u => u.role === 'Supplier');
         setSuppliers(supplierUsers);
+        setFilteredSuppliers(supplierUsers);
+        fetchBusinessCategories();
     }, [users]);
+
+    const fetchBusinessCategories = async () => {
+        try {
+            const res = await fetch(`${API_URL}/business-categories`);
+            if (res.ok) {
+                const data = await res.json();
+                setBusinessCategories(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch business categories:', err);
+        }
+    };
+
+    // Filter suppliers based on search and categories
+    useEffect(() => {
+        let filtered = suppliers;
+
+        // Filter by search text (name or email)
+        if (searchText) {
+            filtered = filtered.filter(s =>
+                s.name.toLowerCase().includes(searchText.toLowerCase()) ||
+                s.email.toLowerCase().includes(searchText.toLowerCase())
+            );
+        }
+
+        // Filter by business categories
+        if (selectedCategories.length > 0) {
+            filtered = filtered.filter(s => {
+                if (!s.businessCategories || s.businessCategories.length === 0) return false;
+                const supplierCategoryIds = s.businessCategories.map(c => c.id);
+                return selectedCategories.some(catId => supplierCategoryIds.includes(catId));
+            });
+        }
+
+        setFilteredSuppliers(filtered);
+    }, [searchText, selectedCategories, suppliers]);
 
     // Filter projects created by this operator
     const myProjects = projects.filter(p => currentUser.role === 'Admin' || p.createdBy === currentUser.username);
@@ -242,13 +285,57 @@ const OperatorDashboard = () => {
                     </Form.Item>
 
                     <Form.Item name="suppliers" label="Invite Suppliers" rules={[{ required: true }]}>
-                        <Select mode="multiple" placeholder="選擇供應商">
-                            {suppliers.map(supplier => (
-                                <Option key={supplier.username} value={supplier.username}>
-                                    {supplier.name} ({supplier.email})
-                                </Option>
-                            ))}
-                        </Select>
+                        <div className="space-y-3">
+                            {/* Filter Section */}
+                            <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <FilterOutlined className="text-gray-500" />
+                                    <span className="font-medium text-sm">篩選供應商</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input
+                                        placeholder="搜尋姓名或公司名"
+                                        value={searchText}
+                                        onChange={(e) => setSearchText(e.target.value)}
+                                        allowClear
+                                    />
+                                    <Select
+                                        mode="multiple"
+                                        placeholder="選擇經營項目"
+                                        value={selectedCategories}
+                                        onChange={setSelectedCategories}
+                                        allowClear
+                                    >
+                                        {businessCategories.map(cat => (
+                                            <Option key={cat.id} value={cat.id}>
+                                                {cat.name}
+                                            </Option>
+                                        ))}
+                                    </Select>
+                                </div>
+
+                                <div className="text-xs text-gray-500 mt-2">
+                                    找到 {filteredSuppliers.length} 位供應商
+                                </div>
+                            </div>
+
+                            {/* Supplier Selection */}
+                            <Select mode="multiple" placeholder="選擇供應商">
+                                {filteredSuppliers.map(supplier => (
+                                    <Option key={supplier.username} value={supplier.username}>
+                                        <div className="flex flex-col">
+                                            <span>{supplier.name} ({supplier.email})</span>
+                                            {supplier.businessCategories && supplier.businessCategories.length > 0 && (
+                                                <span className="text-xs text-gray-400">
+                                                    {supplier.businessCategories.map(c => c.name).join(', ')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </Option>
+                                ))}
+                            </Select>
+                        </div>
                     </Form.Item>
 
                     <Form.Item name="requiresAuditorOpening" valuePropName="checked">

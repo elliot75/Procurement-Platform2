@@ -11,6 +11,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import UserManagement from './pages/UserManagement';
+import BusinessCategoryManagement from './pages/BusinessCategoryManagement';
 import Dashboard from './pages/Dashboard';
 import { Button } from 'antd';
 
@@ -40,8 +41,9 @@ function App() {
 
             <Route path="auditor/opening" element={<AuditorDashboard />} />
 
-            {/* Admin Route */}
+            {/* Admin Routes */}
             <Route path="admin/users" element={<UserManagement />} />
+            <Route path="admin/business-categories" element={<BusinessCategoryManagement />} />
           </Route>
 
           <Route path="/register" element={<RegisterPage />} />

@@ -35,9 +35,21 @@ router.post('/auth/login', async (req, res) => {
             return res.status(401).json({ message: 'Email 或密碼錯誤' });
         }
 
-        // Return user info (excluding password and tokens  )
+        // Get user's business categories
+        const categoriesRes = await query(
+            `SELECT bc.id, bc.name 
+             FROM business_categories bc
+             JOIN user_business_categories ubc ON bc.id = ubc.category_id
+             WHERE ubc.user_id = $1`,
+            [user.id]
+        );
+
+        // Return user info (excluding password and tokens)
         const { password: _, verification_token: __, verification_token_expires: ___, ...userWithoutPassword } = user;
-        res.json(userWithoutPassword);
+        res.json({
+            ...userWithoutPassword,
+            businessCategories: categoriesRes.rows.map(c => c.id)
+        });
 
     } catch (err) {
         console.error(err);
@@ -46,7 +58,7 @@ router.post('/auth/login', async (req, res) => {
 });
 
 router.post('/auth/register', async (req, res) => {
-    const { email, password, name } = req.body;
+    const { email, password, name, businessCategories } = req.body;
 
     try {
         // 1. Validate email format
@@ -80,7 +92,6 @@ router.post('/auth/register', async (req, res) => {
         const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
         // 5. Create user with Pending role and unverified email
-        // Use full email as username to ensure uniqueness across domains
         const result = await query(
             `INSERT INTO users (username, email, password, name, role, email_verified, verification_token, verification_token_expires)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -88,17 +99,28 @@ router.post('/auth/register', async (req, res) => {
             [email, email, password, name, 'Pending', false, verificationToken, tokenExpires]
         );
 
-        // 6. Send verification email
+        const newUser = result.rows[0];
+
+        // 6. Add business categories if provided
+        if (businessCategories && Array.isArray(businessCategories) && businessCategories.length > 0) {
+            for (const categoryId of businessCategories) {
+                await query(
+                    'INSERT INTO user_business_categories (user_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                    [newUser.id, categoryId]
+                );
+            }
+        }
+
+        // 7. Send verification email
         try {
             await emailService.sendVerificationEmail(email, verificationToken);
         } catch (emailError) {
             console.error('Failed to send verification email:', emailError);
-            // Don't fail registration if email fails
         }
 
         res.json({
             message: '註冊成功！驗證郵件已發送至您的信箱，請查收並完成驗證。',
-            user: result.rows[0]
+            user: newUser
         });
     } catch (err) {
         console.error(err);
@@ -111,31 +133,14 @@ router.get('/verify-email', async (req, res) => {
     const { token } = req.query;
 
     try {
-        // First, try to find user with valid token
         const result = await query(
             'SELECT * FROM users WHERE verification_token = $1 AND verification_token_expires > NOW()',
             [token]
         );
 
         if (result.rows.length === 0) {
-            // Token not found or expired, check if this token was already used (user is verified)
-            const verifiedCheck = await query(
-                'SELECT * FROM users WHERE verification_token IS NULL AND email_verified = TRUE AND id IN (SELECT id FROM users WHERE id::text LIKE $1 OR email LIKE $1)',
-                [`%${token.substring(0, 8)}%`]
-            );
-
-            // More reliable: just check if any user with this exact token pattern exists and is verified
-            // Since we can't match old tokens, we'll accept this as "already verified"
-            // Better approach: check by a more specific criteria
-
-            // Actually, let's use a better strategy: 
-            // When token is not found, it could mean:
-            // 1. Invalid token (never existed)
-            // 2. Already verified (token was cleared)
-            // We can't distinguish between these without extra info
-            // So, let's be lenient and return a different
             return res.status(200).json({
-                message: '驗證連結已使用或已過期。\n您的帳號在完成驗證後尚需要管理員核准後才能登入，我們已通知管理員，請耐心等候。',
+                message: '驗證連結已使用或已過期。\\n您的帳號在完成驗證後尚需要管理員核准後才能登入，我們已通知管理員，請耐心等候。',
                 success: false,
                 code: 'TOKEN_USED_OR_EXPIRED'
             });
@@ -143,7 +148,6 @@ router.get('/verify-email', async (req, res) => {
 
         const user = result.rows[0];
 
-        // Check if already verified (shouldn't happen but let's be safe)
         if (user.email_verified) {
             return res.json({
                 message: 'Email 已經驗證過了！',
@@ -152,7 +156,6 @@ router.get('/verify-email', async (req, res) => {
             });
         }
 
-        // Update user as verified
         await query(
             `UPDATE users 
              SET email_verified = TRUE, verification_token = NULL, verification_token_expires = NULL
@@ -160,13 +163,11 @@ router.get('/verify-email', async (req, res) => {
             [user.id]
         );
 
-        // Send notification to admin
         try {
             await emailService.sendAdminNotification(user.name, user.email);
             console.log('Admin notified about new user:', user.email);
         } catch (emailError) {
             console.error('Failed to notify admin:', emailError);
-            // Don't fail verification if admin notification fails
         }
 
         res.json({
@@ -184,6 +185,19 @@ router.get('/verify-email', async (req, res) => {
 router.get('/users', async (req, res) => {
     try {
         const result = await query('SELECT id, username, name, role, email, created_at FROM users ORDER BY id');
+
+        // Get business categories for each user
+        for (const user of result.rows) {
+            const categoriesRes = await query(
+                `SELECT bc.id, bc.name 
+                 FROM business_categories bc
+                 JOIN user_business_categories ubc ON bc.id = ubc.category_id
+                 WHERE ubc.user_id = $1`,
+                [user.id]
+            );
+            user.businessCategories = categoriesRes.rows;
+        }
+
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -195,7 +209,6 @@ router.put('/users/:username', async (req, res) => {
     const updates = req.body;
 
     try {
-        // First, get the current user data to check if role is changing from Pending
         const currentUserResult = await query('SELECT * FROM users WHERE username = $1', [username]);
         if (currentUserResult.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
@@ -215,17 +228,33 @@ router.put('/users/:username', async (req, res) => {
             }
         }
 
-        if (fields.length === 0) return res.json({ message: 'No updates' });
+        if (fields.length > 0) {
+            values.push(username);
+            const sql = `UPDATE users SET ${fields.join(', ')} WHERE username = $${idx} RETURNING *`;
+            const result = await query(sql, values);
+            var updatedUser = result.rows[0];
+        } else {
+            var updatedUser = currentUser;
+        }
 
-        values.push(username);
-        const sql = `UPDATE users SET ${fields.join(', ')} WHERE username = $${idx} RETURNING *`;
+        // Update business categories if provided
+        if (updates.businessCategories !== undefined) {
+            // Delete existing categories
+            await query('DELETE FROM user_business_categories WHERE user_id = $1', [updatedUser.id]);
 
-        const result = await query(sql, values);
-        const updatedUser = result.rows[0];
+            // Insert new categories
+            if (Array.isArray(updates.businessCategories) && updates.businessCategories.length > 0) {
+                for (const categoryId of updates.businessCategories) {
+                    await query(
+                        'INSERT INTO user_business_categories (user_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                        [updatedUser.id, categoryId]
+                    );
+                }
+            }
+        }
 
         // Check if role changed from Pending to an active role
         if (currentUser.role === 'Pending' && updates.role && updates.role !== 'Pending') {
-            // Send approval notification email
             try {
                 await emailService.sendApprovalNotification(
                     updatedUser.name,
@@ -235,7 +264,6 @@ router.put('/users/:username', async (req, res) => {
                 console.log('Approval email sent to:', updatedUser.email);
             } catch (emailError) {
                 console.error('Failed to send approval email:', emailError);
-                // Don't fail the update if email fails
             }
         }
 
@@ -254,14 +282,68 @@ router.delete('/users/:username', async (req, res) => {
     }
 });
 
+// --- Business Categories ---
+
+router.get('/business-categories', async (req, res) => {
+    try {
+        const result = await query('SELECT * FROM business_categories ORDER BY name');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.post('/business-categories', async (req, res) => {
+    const { name, description } = req.body;
+    try {
+        const result = await query(
+            'INSERT INTO business_categories (name, description) VALUES ($1, $2) RETURNING *',
+            [name, description]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        if (err.code === '23505') { // Unique violation
+            res.status(400).json({ message: '此經營項目已存在' });
+        } else {
+            res.status(500).json({ message: err.message });
+        }
+    }
+});
+
+router.put('/business-categories/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    try {
+        const result = await query(
+            'UPDATE business_categories SET name = $1, description = $2 WHERE id = $3 RETURNING *',
+            [name, description, id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        if (err.code === '23505') {
+            res.status(400).json({ message: '此經營項目名稱已存在' });
+        } else {
+            res.status(500).json({ message: err.message });
+        }
+    }
+});
+
+router.delete('/business-categories/:id', async (req, res) => {
+    try {
+        await query('DELETE FROM business_categories WHERE id = $1', [req.params.id]);
+        res.json({ message: 'Deleted' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // --- Projects ---
 
 router.get('/projects', async (req, res) => {
     try {
-        // Fetch projects with their bids and invited suppliers
-        // This is complex in SQL.
-        // Strategy: Fetch projects, then fetch related data, OR use JSON aggregation.
-
         const projectsQuery = `
             SELECT p.*, u.username as created_by_name 
             FROM projects p 
@@ -269,7 +351,6 @@ router.get('/projects', async (req, res) => {
             ORDER BY p.created_at DESC
         `;
 
-        // Update status for expired active projects
         await query(`
             UPDATE projects 
             SET status = 'Ended' 
@@ -279,10 +360,7 @@ router.get('/projects', async (req, res) => {
         const projectsRes = await query(projectsQuery);
         const projects = projectsRes.rows;
 
-        // Populate invitedSuppliers and bids for each project
-        // Note: For production, use JOINs or more efficient queries.
         for (const p of projects) {
-            // Get Invites
             const invitesRes = await query(
                 `SELECT u.username FROM project_invites pi 
                  JOIN users u ON pi.supplier_id = u.id 
@@ -290,9 +368,8 @@ router.get('/projects', async (req, res) => {
                 [p.id]
             );
             p.invitedSuppliers = invitesRes.rows.map(r => r.username);
-            p.createdBy = p.created_by_name; // Map for frontend compatibility if needed
+            p.createdBy = p.created_by_name;
 
-            // Get Bids
             const bidsRes = await query(
                 `SELECT b.amount, b.submitted_at as "submittedAt", u.username as "supplierId", b.attachments 
                  FROM bids b
@@ -301,7 +378,6 @@ router.get('/projects', async (req, res) => {
                 [p.id]
             );
 
-            // Format bids to match frontend expectation { supplierId, price, submittedAt }
             p.bids = bidsRes.rows.map(b => ({
                 supplierId: b.supplierId,
                 price: Number(b.amount),
@@ -309,7 +385,6 @@ router.get('/projects', async (req, res) => {
                 attachments: b.attachments || []
             }));
 
-            // Format dates
             p.createdAt = p.created_at;
             p.endTime = p.end_time;
         }
@@ -324,7 +399,6 @@ router.get('/projects', async (req, res) => {
 router.post('/projects', async (req, res) => {
     const p = req.body;
     try {
-        // Resolve createdBy username to ID
         const userRes = await query('SELECT id FROM users WHERE username = $1', [p.createdBy]);
         if (userRes.rows.length === 0) return res.status(400).json({ message: 'Invalid creator' });
         const userId = userRes.rows[0].id;
@@ -338,8 +412,6 @@ router.post('/projects', async (req, res) => {
 
         const newProject = result.rows[0];
 
-
-        // Handle invites if provided
         if (p.invitedSuppliers && Array.isArray(p.invitedSuppliers) && p.invitedSuppliers.length > 0) {
             for (const supplierUsername of p.invitedSuppliers) {
                 const supRes = await query('SELECT id FROM users WHERE username = $1', [supplierUsername]);
@@ -401,7 +473,6 @@ router.post('/projects/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status, openedBy } = req.body;
 
-    // If opening, update opened info
     if (status === 'Opened' && openedBy) {
         const userRes = await query('SELECT id FROM users WHERE username = $1', [openedBy]);
         const auditorId = userRes.rows[0]?.id;
@@ -414,4 +485,3 @@ router.post('/projects/:id/status', async (req, res) => {
     await query('UPDATE projects SET status = $1 WHERE id = $2', [status, id]);
     res.json({ success: true });
 });
-

@@ -78,7 +78,7 @@ export function TopBar({ user, onLogout, onChangePassword }) {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={onChangePassword}>
                             <Lock className="mr-2 h-4 w-4" />
-                            Change Password
+                            帳號管理
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={onLogout} className="text-red-500 focus:text-red-500">

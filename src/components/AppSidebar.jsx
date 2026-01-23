@@ -66,11 +66,18 @@ export function AppSidebar({ collapsed, setCollapsed, userRole }) {
         }
 
         if (userRole === 'Admin') {
-            items.push({
-                title: "User Management",
-                url: "/admin/users",
-                icon: Users,
-            });
+            items.push(
+                {
+                    title: "User Management",
+                    url: "/admin/users",
+                    icon: Users,
+                },
+                {
+                    title: "Business Categories",
+                    url: "/admin/business-categories",
+                    icon: Building2,
+                }
+            );
         }
 
         return items;

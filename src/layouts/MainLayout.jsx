@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { useMockData } from '../context/MockDataContext';
-import ChangePasswordModal from '../components/ChangePasswordModal';
+import ProfileManagementModal from '../components/ProfileManagementModal';
 import { AppSidebar } from '../components/AppSidebar';
 import { TopBar } from '../components/TopBar';
 
@@ -9,7 +9,7 @@ const MainLayout = () => {
     const navigate = useNavigate();
     const { currentUser, logout } = useMockData();
     const [collapsed, setCollapsed] = useState(false);
-    const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+    const [profileModalVisible, setProfileModalVisible] = useState(false);
 
     if (!currentUser) return <Navigate to="/login" replace />;
 
@@ -30,16 +30,16 @@ const MainLayout = () => {
                 <TopBar
                     user={currentUser}
                     onLogout={handleLogout}
-                    onChangePassword={() => setPasswordModalVisible(true)}
+                    onChangePassword={() => setProfileModalVisible(true)}
                 />
                 <main className="flex-1 overflow-auto p-6">
                     <Outlet />
                 </main>
             </div>
 
-            <ChangePasswordModal
-                visible={passwordModalVisible}
-                onClose={() => setPasswordModalVisible(false)}
+            <ProfileManagementModal
+                visible={profileModalVisible}
+                onClose={() => setProfileModalVisible(false)}
             />
         </div>
     );

@@ -1,19 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Form, Input, Button, Card, Typography, Alert, message, Progress } from 'antd';
+import { Form, Input, Button, Card, Typography, Alert, message, Progress, Select } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { Moon, Sun } from 'lucide-react';
 import { useMockData } from '../context/MockDataContext';
 import { Button as UIButton } from '../components/ui/button';
 
 const { Title, Text } = Typography;
+const { Option } = Select;
+const API_URL = 'http://localhost:3000/api';
 
 const RegisterPage = () => {
     const [error, setError] = useState('');
     const [password, setPassword] = useState('');
     const [isDark, setIsDark] = useState(false);
+    const [businessCategories, setBusinessCategories] = useState([]);
     const navigate = useNavigate();
     const { register } = useMockData();
+
+    useEffect(() => {
+        fetchBusinessCategories();
+    }, []);
+
+    const fetchBusinessCategories = async () => {
+        try {
+            const res = await fetch(`${API_URL}/business-categories`);
+            if (res.ok) {
+                const data = await res.json();
+                setBusinessCategories(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch business categories:', err);
+        }
+    };
 
     const toggleTheme = () => {
         setIsDark(!isDark);
@@ -40,10 +59,10 @@ const RegisterPage = () => {
 
     const onFinish = async (values) => {
         setError('');
-        const { name, email, password } = values;
+        const { name, email, password, businessCategories } = values;
 
         try {
-            const result = await register({ name, email, password });
+            const result = await register({ name, email, password, businessCategories });
 
             if (result.success) {
                 message.success(result.message || '註冊成功！驗證郵件已發送至您的信箱。');
@@ -121,6 +140,24 @@ const RegisterPage = () => {
                         ]}
                     >
                         <Input prefix={<MailOutlined />} placeholder="your.email@example.com" />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="businessCategories"
+                        label="經營項目（供應商請選擇）"
+                        tooltip="供應商請選擇您的經營項目，可複選。內部員工可略過此欄位。"
+                    >
+                        <Select
+                            mode="multiple"
+                            placeholder="請選擇經營項目"
+                            allowClear
+                        >
+                            {businessCategories.map(category => (
+                                <Option key={category.id} value={category.id}>
+                                    {category.name}
+                                </Option>
+                            ))}
+                        </Select>
                     </Form.Item>
 
                     <Form.Item
