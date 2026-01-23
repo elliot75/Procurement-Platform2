@@ -153,6 +153,68 @@ class EmailService {
     }
 
     /**
+     * Send bidding invitation to supplier
+     * @param {string} supplierName - Supplier's name
+     * @param {string} supplierEmail - Supplier's email
+     * @param {object} projectInfo - Project details
+     * @param {string} operatorName - Operator who created the project
+     */
+    async sendBiddingInvitation(supplierName, supplierEmail, projectInfo, operatorName) {
+        const loginLink = `${process.env.APP_URL || 'http://localhost:5173'}/login`;
+        const endDate = new Date(projectInfo.endTime).toLocaleString('zh-TW', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const mailOptions = {
+            from: process.env.SMTP_FROM || 'upvn.po@upvn.com.vn',
+            to: supplierEmail,
+            subject: `投標邀請 - ${projectInfo.title}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #1890ff;">您收到新的投標邀請</h2>
+                    <p>親愛的 ${supplierName}：</p>
+                    <p>${operatorName} 邀請您參與以下專案的投標：</p>
+                    
+                    <div style="background-color: #f5f5f5; padding: 16px; border-radius: 4px; margin: 16px 0;">
+                        <h3 style="margin-top: 0; color: #1890ff;">${projectInfo.title}</h3>
+                        <p style="margin: 8px 0;"><strong>專案說明：</strong></p>
+                        <p style="margin: 8px 0; color: #666;">${projectInfo.description || '無'}</p>
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 12px 0;">
+                        <p style="margin: 8px 0;"><strong>截止時間：</strong> <span style="color: #ff4d4f;">${endDate}</span></p>
+                        <p style="margin: 8px 0;"><strong>貨幣：</strong> ${projectInfo.currency || 'VND'}</p>
+                    </div>
+
+                    <p style="color: #faad14; font-weight: bold;">⏰ 請在截止時間前提交您的報價</p>
+                    
+                    <a href="${loginLink}" 
+                       style="display: inline-block; padding: 12px 24px; background-color: #1890ff; color: white; text-decoration: none; border-radius: 4px; margin: 16px 0;">
+                        立即登入投標
+                    </a>
+
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+                    <p style="color: #999; font-size: 12px;">
+                        如果按鈕無法點擊，請複製此連結到瀏覽器：<br>
+                        <span style="word-break: break-all;">${loginLink}</span>
+                    </p>
+                </div>
+            `
+        };
+
+        try {
+            const info = await this.transporter.sendMail(mailOptions);
+            console.log('Bidding invitation sent to:', supplierEmail, info.messageId);
+            return { success: true, messageId: info.messageId };
+        } catch (error) {
+            console.error('Failed to send bidding invitation:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
      * Verify transporter connection
      */
     async verifyConnection() {

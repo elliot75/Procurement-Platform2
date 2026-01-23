@@ -33,8 +33,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
 
             {/* Role Specific Routes */}
-            <Route path="operator/create" element={<OperatorDashboard />} />
-            <Route path="operator/list" element={<OperatorDashboard />} /> {/* Reusing same component for demo */}
+            <Route path="operator/projects" element={<OperatorDashboard />} />
             <Route path="operator/opening" element={<OperatorOpeningHall />} />
 
             <Route path="supplier/invites" element={<SupplierDashboard />} />

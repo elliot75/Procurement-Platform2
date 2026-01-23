@@ -32,14 +32,9 @@ export function AppSidebar({ collapsed, setCollapsed, userRole }) {
         if (userRole === 'Operator' || userRole === 'Admin') {
             items.push(
                 {
-                    title: "Create Project",
-                    url: "/operator/create",
+                    title: "Project Management",
+                    url: "/operator/projects",
                     icon: Briefcase,
-                },
-                {
-                    title: "My Projects",
-                    url: "/operator/list",
-                    icon: BarChart3,
                 },
                 {
                     title: "My Opening Hall",

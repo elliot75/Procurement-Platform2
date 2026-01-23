@@ -21,6 +21,10 @@ const OperatorDashboard = () => {
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [searchText, setSearchText] = useState('');
 
+    // Separate filter states for Add Supplier modal
+    const [addSupplierSearchText, setAddSupplierSearchText] = useState('');
+    const [addSupplierSelectedCategories, setAddSupplierSelectedCategories] = useState([]);
+
     // Fetch supplier list and business categories
     useEffect(() => {
         const supplierUsers = users.filter(u => u.role === 'Supplier');
@@ -64,6 +68,32 @@ const OperatorDashboard = () => {
 
         setFilteredSuppliers(filtered);
     }, [searchText, selectedCategories, suppliers]);
+
+    // Filter suppliers for Add Supplier modal
+    const [filteredSuppliersForAdd, setFilteredSuppliersForAdd] = useState([]);
+
+    useEffect(() => {
+        let filtered = suppliers;
+
+        // Filter by search text
+        if (addSupplierSearchText) {
+            filtered = filtered.filter(s =>
+                s.name.toLowerCase().includes(addSupplierSearchText.toLowerCase()) ||
+                s.email.toLowerCase().includes(addSupplierSearchText.toLowerCase())
+            );
+        }
+
+        // Filter by business categories
+        if (addSupplierSelectedCategories.length > 0) {
+            filtered = filtered.filter(s => {
+                if (!s.businessCategories || s.businessCategories.length === 0) return false;
+                const supplierCategoryIds = s.businessCategories.map(c => c.id);
+                return addSupplierSelectedCategories.some(catId => supplierCategoryIds.includes(catId));
+            });
+        }
+
+        setFilteredSuppliersForAdd(filtered);
+    }, [addSupplierSearchText, addSupplierSelectedCategories, suppliers]);
 
     // Filter projects created by this operator
     const myProjects = projects.filter(p => currentUser.role === 'Admin' || p.createdBy === currentUser.username);
@@ -136,10 +166,14 @@ const OperatorDashboard = () => {
             title: 'Invited Suppliers',
             dataIndex: 'invitedSuppliers',
             key: 'invitedSuppliers',
-            render: suppliers => (
+            render: (supplierUsernames) => (
                 <>
-                    {suppliers && suppliers.length > 0 ? (
-                        suppliers.map(s => <Tag key={s} color="purple">{s}</Tag>)
+                    {supplierUsernames && supplierUsernames.length > 0 ? (
+                        supplierUsernames.map(username => {
+                            const supplier = users.find(u => u.username === username);
+                            const displayName = supplier ? supplier.name : username;
+                            return <Tag key={username} color="purple">{displayName}</Tag>;
+                        })
                     ) : (
                         <span className="text-gray-400">None</span>
                     )}
@@ -284,58 +318,59 @@ const OperatorDashboard = () => {
                         </Upload>
                     </Form.Item>
 
-                    <Form.Item name="suppliers" label="Invite Suppliers" rules={[{ required: true }]}>
-                        <div className="space-y-3">
-                            {/* Filter Section */}
-                            <div className="bg-gray-50 p-3 rounded border border-gray-200">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <FilterOutlined className="text-gray-500" />
-                                    <span className="font-medium text-sm">篩選供應商</span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input
-                                        placeholder="搜尋姓名或公司名"
-                                        value={searchText}
-                                        onChange={(e) => setSearchText(e.target.value)}
-                                        allowClear
-                                    />
-                                    <Select
-                                        mode="multiple"
-                                        placeholder="選擇經營項目"
-                                        value={selectedCategories}
-                                        onChange={setSelectedCategories}
-                                        allowClear
-                                    >
-                                        {businessCategories.map(cat => (
-                                            <Option key={cat.id} value={cat.id}>
-                                                {cat.name}
-                                            </Option>
-                                        ))}
-                                    </Select>
-                                </div>
-
-                                <div className="text-xs text-gray-500 mt-2">
-                                    找到 {filteredSuppliers.length} 位供應商
-                                </div>
+                    {/* Filter Section - Outside Form.Item */}
+                    <div className="mb-3">
+                        <label className="block text-sm font-medium mb-2">Invite Suppliers</label>
+                        <div className="bg-gray-50 p-3 rounded border border-gray-200 mb-3">
+                            <div className="flex items-center gap-2 mb-2">
+                                <FilterOutlined className="text-gray-500" />
+                                <span className="font-medium text-sm">篩選供應商</span>
                             </div>
 
-                            {/* Supplier Selection */}
-                            <Select mode="multiple" placeholder="選擇供應商">
-                                {filteredSuppliers.map(supplier => (
-                                    <Option key={supplier.username} value={supplier.username}>
-                                        <div className="flex flex-col">
-                                            <span>{supplier.name} ({supplier.email})</span>
-                                            {supplier.businessCategories && supplier.businessCategories.length > 0 && (
-                                                <span className="text-xs text-gray-400">
-                                                    {supplier.businessCategories.map(c => c.name).join(', ')}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </Option>
-                                ))}
-                            </Select>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                    placeholder="搜尋姓名或公司名"
+                                    value={searchText}
+                                    onChange={(e) => setSearchText(e.target.value)}
+                                    allowClear
+                                />
+                                <Select
+                                    mode="multiple"
+                                    placeholder="選擇經營項目"
+                                    value={selectedCategories}
+                                    onChange={setSelectedCategories}
+                                    allowClear
+                                >
+                                    {businessCategories.map(cat => (
+                                        <Option key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </Option>
+                                    ))}
+                                </Select>
+                            </div>
+
+                            <div className="text-xs text-gray-500 mt-2">
+                                找到 {filteredSuppliers.length} 位供應商
+                            </div>
                         </div>
+                    </div>
+
+                    {/* Supplier Selection - Form.Item */}
+                    <Form.Item name="suppliers" rules={[{ required: true, message: '請選擇至少一位供應商' }]}>
+                        <Select mode="multiple" placeholder="選擇供應商" size="large">
+                            {filteredSuppliers.map(supplier => (
+                                <Option key={supplier.username} value={supplier.username}>
+                                    <div className="flex flex-col">
+                                        <span>{supplier.name} ({supplier.email})</span>
+                                        {supplier.businessCategories && supplier.businessCategories.length > 0 && (
+                                            <span className="text-xs text-gray-400">
+                                                {supplier.businessCategories.map(c => c.name).join(', ')}
+                                            </span>
+                                        )}
+                                    </div>
+                                </Option>
+                            ))}
+                        </Select>
                     </Form.Item>
 
                     <Form.Item name="requiresAuditorOpening" valuePropName="checked">
@@ -359,15 +394,63 @@ const OperatorDashboard = () => {
             <Modal
                 title="Add Supplier"
                 open={isAddSupplierModalOpen}
-                onCancel={() => setIsAddSupplierModalOpen(false)}
+                onCancel={() => {
+                    setIsAddSupplierModalOpen(false);
+                    setAddSupplierSearchText('');
+                    setAddSupplierSelectedCategories([]);
+                }}
                 footer={null}
+                width={600}
             >
                 <Form form={supplierForm} layout="vertical" onFinish={handleAddSupplier}>
-                    <Form.Item name="supplier" label="Select Supplier" rules={[{ required: true }]}>
-                        <Select mode="multiple" placeholder="選擇供應商">
-                            {suppliers.map(supplier => (
+                    {/* Filter Section */}
+                    <div className="mb-4">
+                        <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                            <div className="flex items-center gap-2 mb-2">
+                                <FilterOutlined className="text-gray-500" />
+                                <span className="font-medium text-sm">篩選供應商</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                    placeholder="搜尋姓名或公司名"
+                                    value={addSupplierSearchText}
+                                    onChange={(e) => setAddSupplierSearchText(e.target.value)}
+                                    allowClear
+                                />
+                                <Select
+                                    mode="multiple"
+                                    placeholder="選擇經營項目"
+                                    value={addSupplierSelectedCategories}
+                                    onChange={setAddSupplierSelectedCategories}
+                                    allowClear
+                                >
+                                    {businessCategories.map(cat => (
+                                        <Option key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </Option>
+                                    ))}
+                                </Select>
+                            </div>
+
+                            <div className="text-xs text-gray-500 mt-2">
+                                找到 {filteredSuppliersForAdd.length} 位供應商
+                            </div>
+                        </div>
+                    </div>
+
+                    <Form.Item name="supplier" label="Select Supplier" rules={[{ required: true, message: '請選擇至少一位供應商' }]}>
+                        <Select mode="multiple" placeholder="選擇供應商" size="large">
+                            {filteredSuppliersForAdd.map(supplier => (
                                 <Option key={supplier.username} value={supplier.username}>
-                                    {supplier.name} ({supplier.email})
+                                    <div className="flex flex-col">
+                                        <span>{supplier.name} ({supplier.email})</span>
+                                        {supplier.businessCategories && supplier.businessCategories.length > 0 && (
+                                            <span className="text-xs text-gray-400">
+                                                {supplier.businessCategories.map(c => c.name).join(', ')}
+                                            </span>
+                                        )}
+                                    </div>
                                 </Option>
                             ))}
                         </Select>

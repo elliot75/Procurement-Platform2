@@ -399,27 +399,50 @@ router.get('/projects', async (req, res) => {
 router.post('/projects', async (req, res) => {
     const p = req.body;
     try {
-        const userRes = await query('SELECT id FROM users WHERE username = $1', [p.createdBy]);
+        // Get creator info
+        const userRes = await query('SELECT id, name FROM users WHERE username = $1', [p.createdBy]);
         if (userRes.rows.length === 0) return res.status(400).json({ message: 'Invalid creator' });
-        const userId = userRes.rows[0].id;
+        const creator = userRes.rows[0];
 
         const result = await query(
             `INSERT INTO projects (title, description, status, created_by, created_at, end_time, currency, attachment, requires_auditor_opening)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING id, title, description, status, created_at, end_time, currency, attachment, requires_auditor_opening`,
-            [p.title, p.description, 'Active', userId, new Date(), p.endTime, p.currency || 'TWD', p.attachment, p.requiresAuditorOpening || false]
+            [p.title, p.description, 'Active', creator.id, new Date(), p.endTime, p.currency || 'TWD', p.attachment, p.requiresAuditorOpening || false]
         );
 
         const newProject = result.rows[0];
 
         if (p.invitedSuppliers && Array.isArray(p.invitedSuppliers) && p.invitedSuppliers.length > 0) {
             for (const supplierUsername of p.invitedSuppliers) {
-                const supRes = await query('SELECT id FROM users WHERE username = $1', [supplierUsername]);
+                const supRes = await query('SELECT id, name, email FROM users WHERE username = $1', [supplierUsername]);
                 if (supRes.rows.length > 0) {
+                    const supplier = supRes.rows[0];
+
+                    // Insert invitation
                     await query(
                         'INSERT INTO project_invites (project_id, supplier_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                        [newProject.id, supRes.rows[0].id]
+                        [newProject.id, supplier.id]
                     );
+
+                    // Send email notification
+                    try {
+                        await emailService.sendBiddingInvitation(
+                            supplier.name,
+                            supplier.email,
+                            {
+                                title: newProject.title,
+                                description: newProject.description,
+                                endTime: newProject.end_time,
+                                currency: newProject.currency
+                            },
+                            creator.name
+                        );
+                        console.log(`Invitation email sent to ${supplier.email}`);
+                    } catch (emailError) {
+                        console.error(`Failed to send invitation email to ${supplier.email}:`, emailError);
+                        // Don't fail the request if email fails
+                    }
                 }
             }
         }
@@ -455,14 +478,48 @@ router.post('/projects/:id/invite', async (req, res) => {
     const { id } = req.params;
     const { supplier } = req.body;
     try {
-        const userRes = await query('SELECT id FROM users WHERE username = $1', [supplier]);
+        // Get supplier info
+        const userRes = await query('SELECT id, name, email FROM users WHERE username = $1', [supplier]);
         if (userRes.rows.length === 0) return res.json({ message: 'Supplier not found' });
-        const supplierId = userRes.rows[0].id;
+        const supplierInfo = userRes.rows[0];
 
+        // Get project info
+        const projectRes = await query(
+            `SELECT p.*, u.name as creator_name 
+             FROM projects p 
+             JOIN users u ON p.created_by = u.id 
+             WHERE p.id = $1`,
+            [id]
+        );
+
+        if (projectRes.rows.length === 0) return res.status(404).json({ message: 'Project not found' });
+        const project = projectRes.rows[0];
+
+        // Insert invitation
         await query(
             'INSERT INTO project_invites (project_id, supplier_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-            [id, supplierId]
+            [id, supplierInfo.id]
         );
+
+        // Send email notification
+        try {
+            await emailService.sendBiddingInvitation(
+                supplierInfo.name,
+                supplierInfo.email,
+                {
+                    title: project.title,
+                    description: project.description,
+                    endTime: project.end_time,
+                    currency: project.currency
+                },
+                project.creator_name
+            );
+            console.log(`Invitation email sent to ${supplierInfo.email}`);
+        } catch (emailError) {
+            console.error(`Failed to send invitation email to ${supplierInfo.email}:`, emailError);
+            // Don't fail the request if email fails
+        }
+
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ message: err.message });
