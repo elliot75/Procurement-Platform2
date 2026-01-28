@@ -15,15 +15,17 @@ import {
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export function AppSidebar({ collapsed, setCollapsed, userRole }) {
     const location = useLocation();
+    const { t } = useTranslation();
 
     // Mapping based on original logic + new icons
     const getNavItems = () => {
         const items = [
             {
-                title: "Dashboard",
+                title: t('nav.dashboard'),
                 url: "/dashboard",
                 icon: Home,
             }
@@ -32,12 +34,12 @@ export function AppSidebar({ collapsed, setCollapsed, userRole }) {
         if (userRole === 'Operator' || userRole === 'Admin') {
             items.push(
                 {
-                    title: "Project Management",
+                    title: t('nav.projectManagement'),
                     url: "/operator/projects",
                     icon: Briefcase,
                 },
                 {
-                    title: "My Opening Hall",
+                    title: t('nav.myOpeningHall'),
                     url: "/operator/opening",
                     icon: FileCheck,
                 }
@@ -46,7 +48,7 @@ export function AppSidebar({ collapsed, setCollapsed, userRole }) {
 
         if (userRole === 'Supplier' || userRole === 'Admin') {
             items.push({
-                title: "Bidding Invites",
+                title: t('nav.biddingInvites'),
                 url: "/supplier/invites",
                 icon: ShoppingBag,
             });
@@ -54,7 +56,7 @@ export function AppSidebar({ collapsed, setCollapsed, userRole }) {
 
         if (userRole === 'Auditor' || userRole === 'Admin') {
             items.push({
-                title: "Opening Hall",
+                title: t('nav.openingHall'),
                 url: "/auditor/opening",
                 icon: FileCheck,
             });
@@ -63,13 +65,13 @@ export function AppSidebar({ collapsed, setCollapsed, userRole }) {
         if (userRole === 'Admin') {
             items.push(
                 {
-                    title: "User Management",
+                    title: t('nav.userManagement'),
                     url: "/admin/users",
                     icon: Users,
                 },
                 {
-                    title: "Business Categories",
-                    url: "/admin/business-categories",
+                    title: t('nav.businessCategories'),
+                    url: "/admin/categories",
                     icon: Building2,
                 }
             );

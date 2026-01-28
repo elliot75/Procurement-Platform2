@@ -5,6 +5,8 @@ import { MailOutlined, LockOutlined } from '@ant-design/icons';
 import { Moon, Sun } from 'lucide-react';
 import { useMockData } from '../context/MockDataContext';
 import { Button as UIButton } from '../components/ui/button';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const { Title } = Typography;
 
@@ -13,6 +15,7 @@ const LoginPage = () => {
     const [isDark, setIsDark] = useState(false);
     const navigate = useNavigate();
     const { loginMock } = useMockData();
+    const { t } = useTranslation();
 
     const toggleTheme = () => {
         setIsDark(!isDark);
@@ -28,17 +31,17 @@ const LoginPage = () => {
 
             if (result && result.error) {
                 if (result.error === 'EMAIL_NOT_VERIFIED') {
-                    setError('Email 尚未驗證。請檢查您的信箱並完成驗證。');
+                    setError(t('auth.emailNotVerified') || 'Email 尚未驗證。請檢查您的信箱並完成驗證。');
                 } else if (result.error === 'Pending Approval') {
-                    setError('您的帳號尚未經管理員審核。');
+                    setError(t('auth.waitingApproval'));
                 } else {
-                    setError('Email 或密碼錯誤');
+                    setError(t('auth.invalidCredentials') || 'Email 或密碼錯誤');
                 }
                 return;
             }
 
             if (result && !result.error) {
-                message.success(`歡迎回來，${result.name}`);
+                message.success(t('auth.welcomeBack', { name: result.name }) || `歡迎回來，${result.name}`);
                 navigate('/dashboard');
             } else {
                 throw new Error('Invalid credentials');
@@ -46,61 +49,80 @@ const LoginPage = () => {
 
         } catch (err) {
             console.error("Login failed:", err);
-            setError("登入失敗。請檢查您的 Email 和密碼。");
+            setError(t('auth.loginFailed') || "登入失敗。請檢查您的 Email 和密碼。");
         }
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background p-4">
-            <div className="absolute top-4 right-4">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            {/* Theme Toggle and Language Switcher */}
+            <div className="absolute top-4 right-4 flex items-center gap-2">
+                <LanguageSwitcher />
                 <UIButton variant="ghost" size="icon" onClick={toggleTheme}>
-                    {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </UIButton>
             </div>
 
-            <Card className="w-full max-w-md shadow-lg rounded-xl">
+            <Card className="w-full max-w-md shadow-lg">
                 <div className="text-center mb-6">
-                    <Title level={2}>採購平台</Title>
-                    <p className="text-gray-500">登入您的帳號</p>
+                    <Title level={2} className="!mb-2">{t('auth.loginTitle')}</Title>
+                    <p className="text-gray-500">{t('auth.loginSubtitle') || '登入您的帳號'}</p>
                 </div>
 
-                {error && <Alert message={error} type="error" showIcon className="mb-4" />}
+                {error && (
+                    <Alert
+                        message={error}
+                        type="error"
+                        showIcon
+                        closable
+                        onClose={() => setError('')}
+                        className="mb-4"
+                    />
+                )}
 
                 <Form
                     name="login"
-                    initialValues={{ remember: true }}
                     onFinish={onFinish}
-                    size="large"
                     layout="vertical"
+                    size="large"
                 >
                     <Form.Item
                         name="email"
-                        label="Email"
+                        label={t('auth.email')}
                         rules={[
-                            { required: true, message: '請輸入您的 Email' },
-                            { type: 'email', message: 'Email 格式不正確' }
+                            { required: true, message: t('messages.requiredField') },
+                            { type: 'email', message: t('messages.invalidEmail') }
                         ]}
                     >
-                        <Input prefix={<MailOutlined />} placeholder="your.email@example.com" />
+                        <Input
+                            prefix={<MailOutlined />}
+                            placeholder={t('auth.emailPlaceholder') || '請輸入 Email'}
+                        />
                     </Form.Item>
 
                     <Form.Item
                         name="password"
-                        label="密碼"
-                        rules={[{ required: true, message: '請輸入密碼' }]}
+                        label={t('auth.password')}
+                        rules={[{ required: true, message: t('messages.requiredField') }]}
                     >
-                        <Input.Password prefix={<LockOutlined />} placeholder="請輸入密碼" />
+                        <Input.Password
+                            prefix={<LockOutlined />}
+                            placeholder={t('auth.passwordPlaceholder') || '請輸入密碼'}
+                        />
                     </Form.Item>
 
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                            登入
+                        <Button type="primary" htmlType="submit" block>
+                            {t('auth.loginButton')}
                         </Button>
-                        <div className="text-center mt-4">
-                            <span className="text-gray-500">還沒有帳號嗎？ </span>
-                            <Link to="/register" className="text-blue-600 hover:underline">註冊</Link>
-                        </div>
                     </Form.Item>
+
+                    <div className="text-center">
+                        <span className="text-gray-600">{t('auth.noAccount')} </span>
+                        <Link to="/register" className="text-blue-500 hover:text-blue-600">
+                            {t('auth.registerNow')}
+                        </Link>
+                    </div>
                 </Form>
             </Card>
         </div>

@@ -3,10 +3,12 @@ import { Card, Button, Modal, InputNumber, Upload, Tag, Statistic, Badge, Row, C
 import { UploadOutlined, ClockCircleOutlined, ShoppingOutlined, CheckCircleOutlined, DollarOutlined } from '@ant-design/icons';
 import { useMockData } from '../context/MockDataContext';
 import useCountDown from '../hooks/useCountDown';
+import { useTranslation } from 'react-i18next';
 
 const { Countdown } = Statistic;
 
 const ProjectCard = ({ project, onBid, currentUser }) => {
+    const { t } = useTranslation();
     // Check if I already bid (get latest bid if any)
     const myBids = project.bids.filter(b => b.supplier === currentUser.username || b.supplierId === currentUser.username);
     const hasBid = myBids.length > 0;
@@ -16,7 +18,7 @@ const ProjectCard = ({ project, onBid, currentUser }) => {
     return (
         <Card
             title={project.title}
-            extra={<Tag color={isExpired ? 'red' : 'green'}>{isExpired ? 'CLOSED' : 'OPEN'}</Tag>}
+            extra={<Tag color={isExpired ? 'red' : 'green'}>{isExpired ? t('status.Completed') : t('status.Active')}</Tag>}
             className="mb-4 shadow-sm hover:shadow-md transition-shadow"
             actions={[
                 <Button
@@ -24,17 +26,17 @@ const ProjectCard = ({ project, onBid, currentUser }) => {
                     disabled={isExpired} // Allow re-bid until expired
                     onClick={() => onBid(project)}
                 >
-                    {hasBid ? 'Update Bid' : isExpired ? 'Expired' : 'Place Bid'}
+                    {hasBid ? t('project.updateBid') : isExpired ? t('time.expired') : t('project.placeBid')}
                 </Button>
             ]}
         >
             <p className="text-gray-500 mb-4">{project.description}</p>
-            <div className="text-xs text-gray-400 mb-2">Currency: {project.currency || 'TWD'}</div>
+            <div className="text-xs text-gray-400 mb-2">{t('project.currency')}: {project.currency || 'TWD'}</div>
 
             <Row gutter={16}>
                 <Col span={12}>
                     <Statistic
-                        title="Deadline"
+                        title={t('project.endTime')}
                         value={new Date(project.endTime).toLocaleString()}
                         prefix={<ClockCircleOutlined />}
                         valueStyle={{ fontSize: '1rem' }}
@@ -43,14 +45,14 @@ const ProjectCard = ({ project, onBid, currentUser }) => {
                 <Col span={12}>
                     {!isExpired ? (
                         <div className="text-center bg-blue-50 p-2 rounded">
-                            <div className="text-xs text-blue-500 uppercase font-bold">Time Remaining</div>
+                            <div className="text-xs text-blue-500 uppercase font-bold">{t('time.timeRemaining')}</div>
                             <div className="text-lg font-mono text-blue-700">
                                 {days}d {hours}h {minutes}m {seconds}s
                             </div>
                         </div>
                     ) : (
                         <div className="text-center bg-red-50 p-2 rounded text-red-500 font-bold">
-                            Bidding Closed
+                            {t('project.biddingClosed')}
                         </div>
                     )}
                 </Col>
@@ -60,6 +62,7 @@ const ProjectCard = ({ project, onBid, currentUser }) => {
 };
 
 const SupplierDashboard = () => {
+    const { t } = useTranslation();
     const { projects, placeBid, currentUser } = useMockData();
     const [selectedProject, setSelectedProject] = useState(null);
     const [bidAmount, setBidAmount] = useState(0);
@@ -101,14 +104,14 @@ const SupplierDashboard = () => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">Supplier Dashboard</h2>
+            <h2 className="text-2xl font-bold mb-6">{t('nav.dashboard')}</h2>
 
             {/* Statistics Cards */}
             <Row gutter={16} className="mb-6">
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Total Invitations"
+                            title={t('dashboard.totalInvitations')}
                             value={stats.totalInvites}
                             prefix={<ShoppingOutlined />}
                         />
@@ -117,7 +120,7 @@ const SupplierDashboard = () => {
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Active Bidding"
+                            title={t('dashboard.activeBidding')}
                             value={stats.activeBidding}
                             prefix={<ClockCircleOutlined />}
                             valueStyle={{ color: '#3f8600' }}
@@ -127,7 +130,7 @@ const SupplierDashboard = () => {
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Submitted Bids"
+                            title={t('dashboard.submittedBids')}
                             value={stats.submittedBids}
                             prefix={<CheckCircleOutlined />}
                             valueStyle={{ color: '#1890ff' }}
@@ -137,7 +140,7 @@ const SupplierDashboard = () => {
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Pending Responses"
+                            title={t('dashboard.pendingResponses')}
                             value={stats.pendingInvites}
                             prefix={<DollarOutlined />}
                             valueStyle={{ color: '#faad14' }}
@@ -147,7 +150,7 @@ const SupplierDashboard = () => {
             </Row>
 
             {/* Bidding Invitations */}
-            <h3 className="text-lg font-semibold mb-4">Bidding Invitations</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('nav.biddingInvites')}</h3>
             <Row gutter={[16, 16]}>
                 {myInvites.map(p => (
                     <Col xs={24} md={12} lg={8} key={p.id}>
@@ -161,7 +164,7 @@ const SupplierDashboard = () => {
                 open={!!selectedProject}
                 onCancel={() => setSelectedProject(null)}
                 onOk={handleSubmitBid}
-                okText="Submit Bid"
+                okText={t('project.submitBid')}
             >
                 <div className="space-y-4">
                     <p>You can update your bid price anytime before the deadline. History is recorded.</p>

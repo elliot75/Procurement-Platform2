@@ -2,8 +2,10 @@ import React from 'react';
 import { Card, Statistic, Row, Col } from 'antd';
 import { UserOutlined, ProjectOutlined, DollarOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useMockData } from '../context/MockDataContext';
+import { useTranslation } from 'react-i18next';
 
 const AdminDashboard = () => {
+    const { t } = useTranslation();
     const { users, projects } = useMockData();
 
     const stats = {
@@ -15,12 +17,12 @@ const AdminDashboard = () => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">Admin Dashboard</h2>
+            <h2 className="text-2xl font-bold mb-6">{t('nav.dashboard')}</h2>
             <Row gutter={16}>
                 <Col span={6}>
                     <Card>
                         <Statistic
-                            title="Total Users"
+                            title={t('dashboard.totalUsers')}
                             value={stats.totalUsers}
                             prefix={<UserOutlined />}
                         />
@@ -29,7 +31,7 @@ const AdminDashboard = () => {
                 <Col span={6}>
                     <Card>
                         <Statistic
-                            title="Total Projects"
+                            title={t('dashboard.totalProjects')}
                             value={stats.totalProjects}
                             prefix={<ProjectOutlined />}
                         />
@@ -38,7 +40,7 @@ const AdminDashboard = () => {
                 <Col span={6}>
                     <Card>
                         <Statistic
-                            title="Active Projects"
+                            title={t('dashboard.activeProjects')}
                             value={stats.activeProjects}
                             prefix={<DollarOutlined />}
                             valueStyle={{ color: '#3f8600' }}
@@ -48,7 +50,7 @@ const AdminDashboard = () => {
                 <Col span={6}>
                     <Card>
                         <Statistic
-                            title="Completed Projects"
+                            title={t('dashboard.completedProjects')}
                             value={stats.completedProjects}
                             prefix={<CheckCircleOutlined />}
                             valueStyle={{ color: '#cf1322' }}
@@ -58,12 +60,12 @@ const AdminDashboard = () => {
             </Row>
 
             <div className="mt-6">
-                <Card title="Quick Actions" className="mb-4">
-                    <p>Use the sidebar to navigate to:</p>
+                <Card title={t('dashboard.quickActions') || '快速操作'} className="mb-4">
+                    <p>{t('dashboard.useSidebar') || '使用側邊欄導航至：'}</p>
                     <ul className="list-disc list-inside mt-2">
-                        <li>User Management - Manage user accounts and permissions</li>
-                        <li>Project Management - View and manage all projects</li>
-                        <li>Opening Hall - Review bidding results</li>
+                        <li>{t('nav.userManagement')} - {t('dashboard.manageUsers') || '管理使用者帳號和權限'}</li>
+                        <li>{t('nav.projectManagement')} - {t('dashboard.viewProjects') || '查看和管理所有專案'}</li>
+                        <li>{t('nav.openingHall')} - {t('dashboard.reviewBids') || '審查投標結果'}</li>
                     </ul>
                 </Card>
             </div>

@@ -19,6 +19,8 @@ import {
 import { Button } from './ui/button';
 import { useLocation } from 'react-router-dom';
 import { Moon, Sun, Lock } from 'lucide-react';
+import LanguageSwitcher from './LanguageSwitcher';
+
 
 export function TopBar({ user, onLogout, onChangePassword }) {
     const location = useLocation();
@@ -58,6 +60,7 @@ export function TopBar({ user, onLogout, onChangePassword }) {
                 </Breadcrumb>
             </div>
             <div className="flex items-center gap-4">
+                <LanguageSwitcher />
                 <Button variant="ghost" size="icon" onClick={toggleTheme}>
                     {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </Button>

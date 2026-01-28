@@ -1,10 +1,12 @@
 import React from 'react';
-import { Table, Button, Tag, Space, message, Card, Statistic, Row, Col } from 'antd';
+import { Table, Button, Tag, Space, message, Card, Statistic, Row, Col, Modal } from 'antd';
 import { FilePdfOutlined, SafetyCertificateOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined } from '@ant-design/icons';
 import { useMockData } from '../context/MockDataContext';
 import { generateOpeningRecord } from '../utils/generateOpeningRecord';
+import { useTranslation } from 'react-i18next';
 
 const AuditorDashboard = () => {
+    const { t } = useTranslation();
     const { projects, openProject, currentUser, users } = useMockData();
 
     // Auditor sees Ended or Opened projects that require auditor opening
@@ -70,32 +72,32 @@ const AuditorDashboard = () => {
             // 2. Update Status (only if not already opened, else just download)
             if (project.status !== 'Opened') {
                 openProject(project.id, currentUser.name);
-                message.success('Project Opened & Record Generated!');
+                message.success(t('project.bidOpened'));
             } else {
-                message.success('Report Downloaded!');
+                message.success(t('messages.reportDownloaded') || '報告已下載！');
             }
         } catch (error) {
             console.error("PDF Generation Error:", error);
-            message.error(`Failed to generate record: ${error.message}`);
+            message.error(`${t('messages.operationFailed')}: ${error.message}`);
         }
     };
 
     const columns = [
-        { title: 'Project ID', dataIndex: 'id', key: 'id' },
-        { title: 'Title', dataIndex: 'title', key: 'title' },
+        { title: t('project.projectID'), dataIndex: 'id', key: 'id' },
+        { title: t('project.projectTitle'), dataIndex: 'title', key: 'title' },
         {
-            title: 'Status',
+            title: t('project.status'),
             dataIndex: 'status',
             key: 'status',
             render: status => (
                 <Tag color={status === 'Opened' ? 'blue' : 'orange'}>
-                    {status.toUpperCase()}
+                    {t(`status.${status}`)}
                 </Tag>
             )
         },
-        { title: 'Closing Time', dataIndex: 'endTime', key: 'endTime', render: t => new Date(t).toLocaleString() },
+        { title: t('project.closingTime'), dataIndex: 'endTime', key: 'endTime', render: t => new Date(t).toLocaleString() },
         {
-            title: 'Action',
+            title: t('project.actions'),
             key: 'action',
             render: (_, record) => (
                 <Space>
@@ -105,7 +107,7 @@ const AuditorDashboard = () => {
                             icon={<SafetyCertificateOutlined />}
                             onClick={() => handleOpenBid(record)}
                         >
-                            Open Bid
+                            {t('project.openBid')}
                         </Button>
                     )}
                     {record.status === 'Opened' && (
@@ -113,7 +115,7 @@ const AuditorDashboard = () => {
                             icon={<FilePdfOutlined />}
                             onClick={() => handleOpenBid(record)}
                         >
-                            Download Report
+                            {t('project.downloadReport')}
                         </Button>
                     )}
                 </Space>
@@ -126,27 +128,27 @@ const AuditorDashboard = () => {
             // Since this is a mock system without actual file storage,
             // we'll show a modal with file information
             Modal.info({
-                title: '附件資訊',
+                title: t('project.attachmentInfo'),
                 content: (
                     <div>
-                        <p><strong>檔案名稱:</strong> {fileName}</p>
-                        <p><strong>供應商:</strong> {supplier}</p>
-                        <p><strong>專案:</strong> {record.title}</p>
+                        <p><strong>{t('project.fileName')}:</strong> {fileName}</p>
+                        <p><strong>{t('project.supplier')}:</strong> {supplier}</p>
+                        <p><strong>{t('project.projectTitle')}:</strong> {record.title}</p>
                         <p className="mt-4 text-gray-500">
-                            註：這是模擬系統，實際檔案需要整合檔案儲存服務（如 S3, 本地儲存等）才能下載。
+                            {t('messages.mockSystemNote') || '註：這是模擬系統，實際檔案需要整合檔案儲存服務（如 S3, 本地儲存等）才能下載。'}
                         </p>
                     </div>
                 ),
-                okText: '關閉',
+                okText: t('common.close'),
             });
         };
 
         const historyColumns = [
-            { title: 'Supplier', dataIndex: 'supplier', key: 'supplier', render: (text, row) => text || row.supplierId },
-            { title: 'Bid Amount', dataIndex: 'amount', key: 'amount', render: (val, row) => `${record.currency || 'TWD'} ${(val || row.price).toLocaleString()}` },
-            { title: 'Submission Time', dataIndex: 'timestamp', key: 'timestamp', render: (t, row) => new Date(t || row.submittedAt).toLocaleString() },
+            { title: t('project.supplier'), dataIndex: 'supplier', key: 'supplier', render: (text, row) => text || row.supplierId },
+            { title: t('project.bidAmount'), dataIndex: 'amount', key: 'amount', render: (val, row) => `${record.currency || 'TWD'} ${(val || row.price).toLocaleString()}` },
+            { title: t('project.submissionTime'), dataIndex: 'timestamp', key: 'timestamp', render: (t, row) => new Date(t || row.submittedAt).toLocaleString() },
             {
-                title: 'Attachments',
+                title: t('project.attachments'),
                 dataIndex: 'attachments',
                 key: 'attachments',
                 render: (files, bidRecord) => (
@@ -164,14 +166,14 @@ const AuditorDashboard = () => {
                                 </Tag>
                             ))}
                         </div>
-                    ) : <span className="text-gray-400">No Attachments</span>
+                    ) : <span className="text-gray-400">{t('project.noAttachments')}</span>
                 )
             }
         ];
 
         return (
             <div className="bg-gray-50 p-4 rounded">
-                <h4 className="font-bold mb-2">Detailed Bid History</h4>
+                <h4 className="font-bold mb-2">{t('project.detailedBidHistory')}</h4>
                 <Table
                     columns={historyColumns}
                     dataSource={record.bids}
@@ -185,14 +187,14 @@ const AuditorDashboard = () => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">Auditor Dashboard</h2>
+            <h2 className="text-2xl font-bold mb-6">{t('nav.dashboard')}</h2>
 
             {/* Statistics Cards */}
             <Row gutter={16} className="mb-6">
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Total Projects"
+                            title={t('dashboard.totalProjects')}
                             value={stats.totalProjects}
                             prefix={<FileTextOutlined />}
                         />
@@ -201,7 +203,7 @@ const AuditorDashboard = () => {
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Projects to Audit"
+                            title={t('dashboard.projectsToAudit')}
                             value={stats.endedProjects}
                             prefix={<CheckCircleOutlined />}
                             valueStyle={{ color: '#cf1322' }}
@@ -211,7 +213,7 @@ const AuditorDashboard = () => {
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Active Projects"
+                            title={t('dashboard.activeProjects')}
                             value={stats.activeProjects}
                             prefix={<ClockCircleOutlined />}
                             valueStyle={{ color: '#3f8600' }}
@@ -221,7 +223,7 @@ const AuditorDashboard = () => {
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Total Bids"
+                            title={t('dashboard.totalBids')}
                             value={stats.totalBids}
                             prefix={<TeamOutlined />}
                         />
@@ -230,9 +232,9 @@ const AuditorDashboard = () => {
             </Row>
 
             {/* Opening Hall */}
-            <h3 className="text-lg font-semibold mb-4">Opening Hall</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('nav.openingHall')}</h3>
             <Card className="mb-4 bg-yellow-50 border-yellow-200">
-                <p>Only projects that have passed their <b>Closing Time</b> will appear here for opening.</p>
+                <p>{t('project.openingHallNote')}</p>
             </Card>
             <Table
                 dataSource={auditInfo}

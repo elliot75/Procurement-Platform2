@@ -5,6 +5,8 @@ import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { Moon, Sun } from 'lucide-react';
 import { useMockData } from '../context/MockDataContext';
 import { Button as UIButton } from '../components/ui/button';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -17,6 +19,7 @@ const RegisterPage = () => {
     const [businessCategories, setBusinessCategories] = useState([]);
     const navigate = useNavigate();
     const { register } = useMockData();
+    const { t } = useTranslation();
 
     useEffect(() => {
         fetchBusinessCategories();
@@ -59,137 +62,102 @@ const RegisterPage = () => {
 
     const onFinish = async (values) => {
         setError('');
-        const { name, email, password, businessCategories } = values;
+        const { email, password, name, businessCategories: selectedCategories } = values;
 
         try {
-            const result = await register({ name, email, password, businessCategories });
+            const result = await register(email, password, name, selectedCategories || []);
 
             if (result.success) {
-                message.success(result.message || '註冊成功！驗證郵件已發送至您的信箱。');
-                navigate('/login');
+                message.success(t('auth.registrationSuccess') || '註冊成功！請檢查您的 Email 以完成驗證。');
+                setTimeout(() => navigate('/login'), 2000);
             } else {
-                setError(result.message || '註冊失敗，請稍後再試');
+                setError(result.error || t('auth.registrationFailed') || '註冊失敗');
             }
         } catch (err) {
-            setError(err.message || '註冊失敗，請稍後再試');
+            console.error("Registration failed:", err);
+            setError(t('auth.registrationFailed') || "註冊失敗。請稍後再試。");
         }
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background p-4">
-            <div className="absolute top-4 right-4">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            {/* Theme Toggle and Language Switcher */}
+            <div className="absolute top-4 right-4 flex items-center gap-2">
+                <LanguageSwitcher />
                 <UIButton variant="ghost" size="icon" onClick={toggleTheme}>
-                    {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </UIButton>
             </div>
 
-            <Card className="w-full max-w-md shadow-lg rounded-xl">
+            <Card className="w-full max-w-md shadow-lg">
                 <div className="text-center mb-6">
-                    <Title level={2}>建立帳號</Title>
-                    <p className="text-gray-500">加入採購平台</p>
+                    <Title level={2} className="!mb-2">{t('auth.registerTitle')}</Title>
+                    <p className="text-gray-500">{t('auth.registerSubtitle') || '建立您的帳號'}</p>
                 </div>
 
-                {error && <Alert message={error} type="error" showIcon className="mb-4" />}
+                {error && (
+                    <Alert
+                        message={error}
+                        type="error"
+                        showIcon
+                        closable
+                        onClose={() => setError('')}
+                        className="mb-4"
+                    />
+                )}
 
                 <Form
                     name="register"
                     onFinish={onFinish}
-                    size="large"
                     layout="vertical"
+                    size="large"
                 >
                     <Form.Item
                         name="name"
-                        label="姓名"
-                        rules={[{ required: true, message: '請輸入您的姓名' }]}
-                        tooltip={{
-                            title: (
-                                <div>
-                                    <div>• 供應商：請填入公司名稱</div>
-                                    <div>• 公司內部員工：請填入姓名並備註員工編號</div>
-                                    <div style={{ marginTop: 4, fontSize: 11, opacity: 0.8 }}>範例：John(12120001)</div>
-                                </div>
-                            ),
-                            icon: <UserOutlined />
-                        }}
+                        label={t('auth.name')}
+                        tooltip={t('auth.nameHint')}
+                        rules={[{ required: true, message: t('messages.requiredField') }]}
                     >
                         <Input
                             prefix={<UserOutlined />}
-                            placeholder="供應商請填公司名 / 內部員工請填姓名(員工編號)"
+                            placeholder={t('auth.namePlaceholder') || '請輸入姓名或公司名稱'}
                         />
                     </Form.Item>
 
-                    <Alert
-                        message="姓名欄位填寫說明"
-                        description={
-                            <div className="text-xs">
-                                <p className="mb-1">📦 <strong>供應商</strong>：請填入公司名稱</p>
-                                <p>👤 <strong>公司內部員工</strong> (Operator/Auditor)：請填入姓名並備註員工編號，例如：John(12120001)</p>
-                            </div>
-                        }
-                        type="info"
-                        showIcon
-                        className="mb-4"
-                    />
-
                     <Form.Item
                         name="email"
-                        label="Email"
+                        label={t('auth.email')}
                         rules={[
-                            { required: true, message: '請輸入您的 Email' },
-                            { type: 'email', message: 'Email 格式不正確' }
+                            { required: true, message: t('messages.requiredField') },
+                            { type: 'email', message: t('messages.invalidEmail') }
                         ]}
                     >
-                        <Input prefix={<MailOutlined />} placeholder="your.email@example.com" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="businessCategories"
-                        label="經營項目（供應商請選擇）"
-                        tooltip="供應商請選擇您的經營項目，可複選。內部員工可略過此欄位。"
-                    >
-                        <Select
-                            mode="multiple"
-                            placeholder="請選擇經營項目"
-                            allowClear
-                        >
-                            {businessCategories.map(category => (
-                                <Option key={category.id} value={category.id}>
-                                    {category.name}
-                                </Option>
-                            ))}
-                        </Select>
+                        <Input
+                            prefix={<MailOutlined />}
+                            placeholder={t('auth.emailPlaceholder') || '請輸入 Email'}
+                        />
                     </Form.Item>
 
                     <Form.Item
                         name="password"
-                        label="密碼"
+                        label={t('auth.password')}
                         rules={[
-                            { required: true, message: '請輸入密碼' },
-                            { min: 8, message: '密碼至少需要 8 個字元' },
-                            {
-                                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
-                                message: '密碼必須包含大寫、小寫英文字母及數字'
-                            }
+                            { required: true, message: t('messages.requiredField') },
+                            { min: 6, message: t('messages.passwordTooShort') }
                         ]}
                     >
                         <Input.Password
                             prefix={<LockOutlined />}
-                            placeholder="請輸入密碼"
+                            placeholder={t('auth.passwordPlaceholder') || '請輸入密碼'}
                             onChange={(e) => setPassword(e.target.value)}
                         />
                     </Form.Item>
 
                     {password && (
                         <div className="mb-4">
-                            <div className="flex justify-between items-center mb-1">
-                                <Text type="secondary" style={{ fontSize: 12 }}>密碼強度</Text>
-                                <Text style={{ fontSize: 12, color: getStrengthColor() }}>
-                                    {passwordStrength <= 25 && '弱'}
-                                    {passwordStrength > 25 && passwordStrength <= 50 && '中等'}
-                                    {passwordStrength > 50 && passwordStrength <= 75 && '良好'}
-                                    {passwordStrength > 75 && '強'}
-                                </Text>
-                            </div>
+                            <Text type="secondary" className="text-sm">
+                                {t('auth.passwordStrength') || '密碼強度'}:
+                            </Text>
                             <Progress
                                 percent={passwordStrength}
                                 strokeColor={getStrengthColor()}
@@ -199,33 +167,57 @@ const RegisterPage = () => {
                         </div>
                     )}
 
-                    <div className="mb-4 p-3 bg-blue-50 rounded">
-                        <Text strong style={{ fontSize: 12 }}>密碼要求：</Text>
-                        <ul className="mt-2 text-xs text-gray-600 space-y-1">
-                            <li className={password.length >= 8 ? 'text-green-600' : ''}>
-                                ✓ 至少 8 個字元
-                            </li>
-                            <li className={/[A-Z]/.test(password) ? 'text-green-600' : ''}>
-                                ✓ 包含大寫英文字母
-                            </li>
-                            <li className={/[a-z]/.test(password) ? 'text-green-600' : ''}>
-                                ✓ 包含小寫英文字母
-                            </li>
-                            <li className={/[0-9]/.test(password) ? 'text-green-600' : ''}>
-                                ✓ 包含數字
-                            </li>
-                        </ul>
-                    </div>
+                    <Form.Item
+                        name="confirmPassword"
+                        label={t('auth.confirmPassword')}
+                        dependencies={['password']}
+                        rules={[
+                            { required: true, message: t('messages.requiredField') },
+                            ({ getFieldValue }) => ({
+                                validator(_, value) {
+                                    if (!value || getFieldValue('password') === value) {
+                                        return Promise.resolve();
+                                    }
+                                    return Promise.reject(new Error(t('messages.passwordMismatch')));
+                                },
+                            }),
+                        ]}
+                    >
+                        <Input.Password
+                            prefix={<LockOutlined />}
+                            placeholder={t('auth.confirmPasswordPlaceholder') || '請再次輸入密碼'}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="businessCategories"
+                        label={t('auth.businessCategories')}
+                        tooltip={t('auth.businessCategoriesHint') || '供應商請選擇經營項目'}
+                    >
+                        <Select
+                            mode="multiple"
+                            placeholder={t('auth.selectBusinessCategories') || '選擇經營項目（選填）'}
+                            allowClear
+                        >
+                            {businessCategories.map(cat => (
+                                <Option key={cat.id} value={cat.id}>
+                                    {cat.name}
+                                </Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
 
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                            註冊
+                        <Button type="primary" htmlType="submit" block>
+                            {t('auth.registerButton')}
                         </Button>
                     </Form.Item>
 
                     <div className="text-center">
-                        <span className="text-gray-500">已經有帳號？ </span>
-                        <Link to="/login" className="text-blue-600 hover:underline">登入</Link>
+                        <span className="text-gray-600">{t('auth.haveAccount')} </span>
+                        <Link to="/login" className="text-blue-500 hover:text-blue-600">
+                            {t('auth.loginNow')}
+                        </Link>
                     </div>
                 </Form>
             </Card>
