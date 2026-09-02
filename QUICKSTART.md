@@ -50,7 +50,7 @@ npm run dev
 
 **預設管理員帳號**:
 - Email: `upvn.po@upvn.com.vn`
-- Password: `pwd4upvn`
+- Password: `(set DEFAULT_ADMIN_PASSWORD)`
 
 ---
 
