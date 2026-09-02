@@ -8,7 +8,7 @@ const { Pool } = pg;
 const pool = new Pool({
     connectionString: process.env.DATABASE_CONNECTION_STRING,
     ssl: {
-        rejectUnauthorized: false
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false'
     }
 });
 
