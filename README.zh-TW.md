@@ -173,7 +173,7 @@ npm run dev
 ### 管理員帳號
 - **Email**: `upvn.po@upvn.com.vn`
 - **Username**: `upvn`
-- **Password**: `pwd4upvn`
+- **Password**: `(set DEFAULT_ADMIN_PASSWORD)`
 - **角色**: Admin
 
 > ⚠️ **安全提醒**: 首次登入後請立即修改密碼！
