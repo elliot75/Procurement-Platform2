@@ -130,7 +130,7 @@ npm run dev
 ### Administrator
 - **Email**: `upvn.po@upvn.com.vn`
 - **Username**: `upvn`
-- **Password**: `pwd4upvn`
+- **Password**: `(set DEFAULT_ADMIN_PASSWORD)`
 - **Role**: Admin
 
 ---
