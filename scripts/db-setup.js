@@ -7,8 +7,8 @@ const { Pool } = pg;
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_CONNECTION_STRING,
-    ssl: {
-        rejectUnauthorized: false
+    ssl: process.env.DATABASE_SSL === 'disable' ? false : {
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false'
     }
 });
 
@@ -70,22 +70,25 @@ const setupDatabase = async () => {
         `);
         console.log("Verified 'bids' table.");
 
-        // Seed Admin User
-        const adminUsername = 'upvn';
-        const adminPassword = 'pwd4upvn';
+        // Seed Admin User (password from env; never hardcode credentials in source)
+        const adminUsername = process.env.DEFAULT_ADMIN_USERNAME || 'upvn';
+        const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
         const adminRole = 'Admin';
 
-        // Check if admin exists
-        const res = await client.query('SELECT * FROM users WHERE username = $1', [adminUsername]);
-
-        if (res.rows.length === 0) {
-            await client.query(`
-                INSERT INTO users (username, password, name, role)
-                VALUES ($1, $2, $3, $4)
-            `, [adminUsername, adminPassword, 'Admin User', adminRole]);
-            console.log(`Created admin user: ${adminUsername}`);
+        if (!adminPassword) {
+            console.warn('DEFAULT_ADMIN_PASSWORD not set; skipping admin seed.');
         } else {
-            console.log(`Admin user ${adminUsername} already exists.`);
+            const res = await client.query('SELECT * FROM users WHERE username = $1', [adminUsername]);
+
+            if (res.rows.length === 0) {
+                await client.query(`
+                    INSERT INTO users (username, password, name, role)
+                    VALUES ($1, $2, $3, $4)
+                `, [adminUsername, adminPassword, 'Admin User', adminRole]);
+                console.log(`Created admin user: ${adminUsername}`);
+            } else {
+                console.log(`Admin user ${adminUsername} already exists.`);
+            }
         }
 
     } catch (err) {
