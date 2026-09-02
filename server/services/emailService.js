@@ -3,16 +3,20 @@ import nodemailer from 'nodemailer';
 // Email service for sending verification emails
 class EmailService {
     constructor() {
+        const smtpHost = process.env.SMTP_HOST;
+        const smtpUser = process.env.SMTP_USER;
+        const smtpPass = process.env.SMTP_PASS;
+        if (!smtpHost || !smtpUser || !smtpPass) {
+            console.warn('SMTP_HOST/SMTP_USER/SMTP_PASS are not fully configured; email sending will fail until they are set.');
+        }
         this.transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'mail.upvn.com.vn',
-            port: parseInt(process.env.SMTP_PORT || '25'),
-            secure: false, // Use TLS  
-            auth: {
-                user: process.env.SMTP_USER || 'upvn.po@upvn.com.vn',
-                pass: process.env.SMTP_PASS || 'Uni@12120011'
-            },
+            host: smtpHost || 'localhost',
+            port: parseInt(process.env.SMTP_PORT || '25', 10),
+            secure: false,
+            auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
             tls: {
-                rejectUnauthorized: false // For development
+                // Set SMTP_TLS_REJECT_UNAUTHORIZED=false only if you must accept self-signed certs.
+                rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== 'false'
             }
         });
     }
@@ -26,7 +30,7 @@ class EmailService {
         const verificationLink = `${process.env.APP_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
 
         const mailOptions = {
-            from: process.env.SMTP_FROM || 'upvn.po@upvn.com.vn',
+            from: process.env.SMTP_FROM || 'noreply@example.com',
             to: email,
             subject: '請驗證您的 Email',
             html: `
@@ -66,11 +70,11 @@ class EmailService {
      * @param {string} userEmail - New user's email
      */
     async sendAdminNotification(userName, userEmail) {
-        const adminEmail = 'upvn.po@upvn.com.vn';
+        const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_FROM;
         const dashboardLink = `${process.env.APP_URL || 'http://localhost:5173'}/admin/users`;
 
         const mailOptions = {
-            from: process.env.SMTP_FROM || 'upvn.po@upvn.com.vn',
+            from: process.env.SMTP_FROM || 'noreply@example.com',
             to: adminEmail,
             subject: '新用戶註冊通知 - 待審核',
             html: `
@@ -116,7 +120,7 @@ class EmailService {
         const loginLink = `${process.env.APP_URL || 'http://localhost:5173'}/login`;
 
         const mailOptions = {
-            from: process.env.SMTP_FROM || 'upvn.po@upvn.com.vn',
+            from: process.env.SMTP_FROM || 'noreply@example.com',
             to: userEmail,
             subject: '帳號審核通過通知',
             html: `
@@ -170,7 +174,7 @@ class EmailService {
         });
 
         const mailOptions = {
-            from: process.env.SMTP_FROM || 'upvn.po@upvn.com.vn',
+            from: process.env.SMTP_FROM || 'noreply@example.com',
             to: supplierEmail,
             subject: `投標邀請 - ${projectInfo.title}`,
             html: `
