@@ -103,12 +103,11 @@ INSERT INTO business_categories (name, description) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================
--- 8. CREATE DEFAULT ADMIN USER
+-- 8. DEFAULT ADMIN USER
 -- ============================================
--- Password: pwd4upvn (plaintext for demo, use hashing in production)
-INSERT INTO users (username, email, password, name, role, email_verified)
-VALUES ('upvn', 'upvn.po@upvn.com.vn', 'pwd4upvn', 'Admin User', 'Admin', TRUE)
-ON CONFLICT (username) DO NOTHING;
+-- Do not seed credentials in SQL. Create the admin via:
+--   DEFAULT_ADMIN_USERNAME / DEFAULT_ADMIN_PASSWORD with: npm run db:setup
+-- or insert a hashed password manually in production.
 
 -- ============================================
 -- 9. GRANT PERMISSIONS (Optional)
